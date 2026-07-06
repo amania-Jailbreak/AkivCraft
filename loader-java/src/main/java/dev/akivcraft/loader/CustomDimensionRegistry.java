@@ -1,9 +1,7 @@
 package dev.akivcraft.loader;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -42,15 +40,35 @@ public final class CustomDimensionRegistry {
                 var identifier = Identifier.parse(id);
                 if (registry.containsKey(identifier)) continue;
 
-                var typeJson = buildDimensionTypeJson(obj.getAsJsonObject("type"));
                 try {
-                    var decoded = DimensionType.DIRECT_CODEC.decode(JsonOps.INSTANCE, typeJson);
-                    var pair = decoded.result().orElse(null);
-                    if (pair == null) {
-                        System.err.printf("AkivCraft failed to decode dimension type %s%n", id);
+                    var template = selectTemplateDimensionType(registry, obj);
+                    if (template == null) {
+                        System.err.printf("AkivCraft failed to resolve template dimension type for %s%n", id);
                         continue;
                     }
-                    var dimensionType = pair.getFirst();
+                    var typeConfig = obj.getAsJsonObject("type");
+                    var monsterSettings = new DimensionType.MonsterSettings(
+                        template.monsterSpawnLightTest(),
+                        intValue(typeConfig, "monsterSpawnBlockLightLimit", template.monsterSpawnBlockLightLimit())
+                    );
+                    var dimensionType = new DimensionType(
+                        template.hasFixedTime(),
+                        booleanValue(typeConfig, "hasSkylight", template.hasSkyLight()),
+                        booleanValue(typeConfig, "hasCeiling", template.hasCeiling()),
+                        template.hasEnderDragonFight(),
+                        numberValue(typeConfig, "coordinateScale", template.coordinateScale()).doubleValue(),
+                        intValue(typeConfig, "minY", template.minY()),
+                        intValue(typeConfig, "height", template.height()),
+                        intValue(typeConfig, "logicalHeight", template.logicalHeight()),
+                        template.infiniburn(),
+                        numberValue(typeConfig, "ambientLight", template.ambientLight()).floatValue(),
+                        monsterSettings,
+                        template.skybox(),
+                        template.cardinalLightType(),
+                        template.attributes(),
+                        template.timelines(),
+                        template.defaultClock()
+                    );
                     var key = ResourceKey.create(Registries.DIMENSION_TYPE, identifier);
                     Registry.register(registry, key, dimensionType);
                     registered++;
@@ -134,27 +152,15 @@ public final class CustomDimensionRegistry {
         };
     }
 
-    private static JsonObject buildDimensionTypeJson(JsonObject type) {
-        if (type == null) type = new JsonObject();
-        var json = new JsonObject();
-        json.addProperty("ultrawarm", booleanValue(type, "ultrawarm", false));
-        json.addProperty("natural", booleanValue(type, "natural", true));
-        json.addProperty("piglin_safe", booleanValue(type, "piglinSafe", false));
-        json.addProperty("respawn_anchor_works", booleanValue(type, "respawnAnchorWorks", false));
-        json.addProperty("has_skylight", booleanValue(type, "hasSkylight", true));
-        json.addProperty("has_ceiling", booleanValue(type, "hasCeiling", false));
-        json.addProperty("ambient_light", numberValue(type, "ambientLight", 0.0));
-        json.addProperty("fixed_time", type.has("fixedTime") ? type.get("fixedTime").getAsNumber() : null);
-        json.addProperty("monster_spawn_block_light_limit", intValue(type, "monsterSpawnBlockLightLimit", 0));
-        json.addProperty("infiniburn", stringValue(type, "infiniburn", "#minecraft:infiniburn_overworld"));
-        json.addProperty("effects", stringValue(type, "effects", "minecraft:overworld"));
-        json.addProperty("height", intValue(type, "height", 256));
-        json.addProperty("min_y", intValue(type, "minY", 0));
-        json.addProperty("logical_height", intValue(type, "logicalHeight", intValue(type, "height", 256)));
-        json.addProperty("coordinate_scale", numberValue(type, "coordinateScale", 1.0));
-        json.addProperty("bed_works", booleanValue(type, "bedWorks", true));
-        json.addProperty("has_raids", booleanValue(type, "hasRaids", true));
-        return json;
+    private static DimensionType selectTemplateDimensionType(Registry<DimensionType> registry, JsonObject obj) {
+        var generator = obj.getAsJsonObject("generator");
+        var template = generator != null ? stringValue(generator, "template", "overworld") : "overworld";
+        var key = switch (template.toLowerCase(java.util.Locale.ROOT)) {
+            case "nether" -> Identifier.parse("minecraft:the_nether");
+            case "end" -> Identifier.parse("minecraft:the_end");
+            default -> Identifier.parse("minecraft:overworld");
+        };
+        return registry.get(key).map(Holder.Reference::value).orElse(null);
     }
 
     private static String stringValue(JsonObject obj, String name, String fallback) {
