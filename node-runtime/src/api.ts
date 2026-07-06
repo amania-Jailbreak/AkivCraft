@@ -332,6 +332,8 @@ export type AkivCraftApi = {
     surface(): MinimapBlock[]
     minimap(): MinimapBlock[]
     entities(): EntityState[]
+    setBlock(x: number, y: number, z: number, blockId: string): void
+    removeBlock(x: number, y: number, z: number): void
   }
   server: {
     state(): ServerState

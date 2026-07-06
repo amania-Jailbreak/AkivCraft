@@ -320,6 +320,8 @@ export class AkivCraftRuntime {
         surface: () => worldState().surface?.blocks ?? worldState().minimap?.blocks ?? [],
         minimap: () => worldState().surface?.blocks ?? worldState().minimap?.blocks ?? [],
         entities: () => worldState().entities ?? [],
+        setBlock: (x, y, z, blockId) => this.playerActionClient.setBlock(x, y, z, blockId),
+        removeBlock: (x, y, z) => this.playerActionClient.removeBlock(x, y, z),
       },
       server: {
         state: serverState,

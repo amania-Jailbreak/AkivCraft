@@ -33,6 +33,14 @@ export class PlayerActionClient {
     this.send(`sendCommand\t${command}`)
   }
 
+  setBlock(x: number, y: number, z: number, blockId: string): void {
+    this.send(`setBlock\t${x}\t${y}\t${z}\t${blockId}`)
+  }
+
+  removeBlock(x: number, y: number, z: number): void {
+    this.send(`removeBlock\t${x}\t${y}\t${z}`)
+  }
+
   private send(tsv: string): void {
     if (this.stdio) {
       process.stdout.write(`${JSON.stringify({ type: "playerAction", data: encode(tsv) })}\n`)

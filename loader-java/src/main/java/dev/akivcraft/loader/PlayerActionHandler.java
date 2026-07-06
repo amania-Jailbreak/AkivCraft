@@ -1,10 +1,12 @@
 package dev.akivcraft.loader;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
 public final class PlayerActionHandler {
@@ -53,6 +55,21 @@ public final class PlayerActionHandler {
                 if (parts.length < 3) return;
                 var command = parts[2];
                 PlayerActionQueue.enqueue(() -> applySendCommand(command));
+            }
+            case "setBlock" -> {
+                if (parts.length < 6) return;
+                var x = Integer.parseInt(parts[2]);
+                var y = Integer.parseInt(parts[3]);
+                var z = Integer.parseInt(parts[4]);
+                var blockId = parts[5];
+                PlayerActionQueue.enqueue(() -> applySetBlock(x, y, z, blockId));
+            }
+            case "removeBlock" -> {
+                if (parts.length < 5) return;
+                var x = Integer.parseInt(parts[2]);
+                var y = Integer.parseInt(parts[3]);
+                var z = Integer.parseInt(parts[4]);
+                PlayerActionQueue.enqueue(() -> applyRemoveBlock(x, y, z));
             }
         }
     }
@@ -142,5 +159,60 @@ public final class PlayerActionHandler {
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.getConnection() == null) return;
         mc.getConnection().sendCommand(command);
+    }
+
+    private static void applySetBlock(int x, int y, int z, String blockId) {
+        var mc = Minecraft.getInstance();
+        var local = mc.player;
+        if (local == null) return;
+
+        var id = Identifier.tryParse(blockId);
+        if (id == null) {
+            System.err.printf("AkivCraft setBlock unknown block id: %s%n", blockId);
+            return;
+        }
+        var block = BuiltInRegistries.BLOCK.get(id).orElse(null);
+        if (block == null) {
+            System.err.printf("AkivCraft setBlock block not registered: %s%n", blockId);
+            return;
+        }
+
+        var pos = new BlockPos(x, y, z);
+
+        var server = mc.getSingleplayerServer();
+        if (server != null) {
+            for (var serverLevel : server.getAllLevels()) {
+                if (serverLevel.dimension().identifier().toString().equals(local.level().dimension().identifier().toString())) {
+                    serverLevel.setBlock(pos, block.value().defaultBlockState(), 3);
+                    return;
+                }
+            }
+        }
+
+        if (mc.getConnection() != null) {
+            mc.getConnection().sendCommand(String.format(java.util.Locale.ROOT, "setblock %d %d %d %s", x, y, z, blockId));
+        }
+    }
+
+    private static void applyRemoveBlock(int x, int y, int z) {
+        var mc = Minecraft.getInstance();
+        var local = mc.player;
+        if (local == null) return;
+
+        var pos = new BlockPos(x, y, z);
+
+        var server = mc.getSingleplayerServer();
+        if (server != null) {
+            for (var serverLevel : server.getAllLevels()) {
+                if (serverLevel.dimension().identifier().toString().equals(local.level().dimension().identifier().toString())) {
+                    serverLevel.removeBlock(pos, false);
+                    return;
+                }
+            }
+        }
+
+        if (mc.getConnection() != null) {
+            mc.getConnection().sendCommand(String.format(java.util.Locale.ROOT, "setblock %d %d %d air", x, y, z));
+        }
     }
 }

@@ -2,7 +2,7 @@ export default {
   id: "block-events",
   name: "Block Events Sample",
   version: "0.1.0",
-  description: "Logs block use/place/break events and demonstrates simple portal-style triggers.",
+  description: "Logs block use/place/break events and demonstrates world edit via setBlock.",
 
   onEnable(api) {
     api.events.on("use_block", (ctx) => {
@@ -17,6 +17,12 @@ export default {
 
     api.blocks.onBreak("minecraft:stone", (ctx) => {
       api.chat.send(`AkivCraft: stone broken near ${ctx.breakPos.x}, ${ctx.breakPos.y}, ${ctx.breakPos.z}`)
+    })
+
+    api.blocks.onUse("minecraft:gold_block", (ctx) => {
+      const { x, y, z } = ctx.targetPos
+      api.world.setBlock(x, y + 1, z, "minecraft:beacon")
+      api.chat.send(`AkivCraft: placed beacon above gold block at ${x}, ${y + 1}, ${z}`)
     })
   }
 }

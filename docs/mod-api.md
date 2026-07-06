@@ -21,6 +21,10 @@ AkivCraft Node mods receive one `api` object in `onEnable(api)`.
 - `api.world.minimap()` is an alias for `api.world.surface()`.
 - `api.world.entities()` returns nearby renderable players and mobs with id, uuid, name, type, kind, and position. `kind` is `player`, `passive_mob`, or `hostile_mob`.
 - Surface blocks include `y`, so map mods can render height shading, contour lines, and altitude ranges without extra API calls.
+- `api.world.setBlock(x, y, z, blockId)` places a block at the given coordinates. In singleplayer this edits the server level directly; in multiplayer it sends a vanilla `/setblock` command. `blockId` is a full id like `minecraft:stone` or `akivcraft.mymod:custom_block`.
+- `api.world.removeBlock(x, y, z)` removes the block at the given coordinates (sets it to air). Same singleplayer/multiplayer behavior as `setBlock`.
+
+Block edits run on the game thread and are asynchronous from the mod's perspective. Mods should not assume a block is present immediately after calling `setBlock`. Use block events (`api.events.on("place_block", ...)`) to confirm placement when needed.
 
 ## Server
 
