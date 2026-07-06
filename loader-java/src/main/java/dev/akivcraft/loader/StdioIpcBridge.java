@@ -68,6 +68,10 @@ public final class StdioIpcBridge {
         send("{\"type\":\"chatMessage\",\"chatType\":\"" + escape(type) + "\",\"text\":\"" + escape(text) + "\"}");
     }
 
+    public static void sendBlockEvent(String json) {
+        send("{\"type\":\"blockEvent\",\"data\":\"" + encode(json) + "\"}");
+    }
+
     private static void readLoop(Process process) {
         try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;

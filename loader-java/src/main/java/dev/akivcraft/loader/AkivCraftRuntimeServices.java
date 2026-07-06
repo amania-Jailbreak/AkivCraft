@@ -24,6 +24,7 @@ public final class AkivCraftRuntimeServices {
 
         KeyEventBridge.start(config.ipcPort());
         ItemUseIpc.start(config.ipcPort());
+        BlockEventIpc.start(config.ipcPort());
         ChatCapture.start(config.ipcPort());
         AkivCraftKeyMappings.start(config.ipcPort());
 

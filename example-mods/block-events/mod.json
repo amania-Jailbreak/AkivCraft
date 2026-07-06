@@ -1,0 +1,6 @@
+{
+  "id": "block-events",
+  "name": "Block Events Sample",
+  "version": "0.1.0",
+  "description": "Logs block use/place/break events and demonstrates simple portal-style triggers."
+}

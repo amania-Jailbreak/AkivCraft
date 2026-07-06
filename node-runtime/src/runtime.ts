@@ -1,7 +1,7 @@
 import { readFile, readdir, writeFile, copyFile, mkdir, rm } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 import path from "node:path"
-import type { AkivCraftApi, AkivCraftMod, BiomeDefinition, ChatMessage, GameState, ItemUseContext, PlayerState, ServerState, SettingsSchema, WorldState } from "./api.js"
+import type { AkivCraftApi, AkivCraftMod, BiomeDefinition, BlockEventHandler, BlockEventType, ChatMessage, GameState, ItemUseContext, PlayerState, ServerState, SettingsSchema, WorldState } from "./api.js"
 import type { HudBitmapEntry } from "./binary-ipc-server.js"
 import { BinaryIpcServer } from "./binary-ipc-server.js"
 import type { HudEntry, ItemUseHandler } from "./ipc-server.js"
@@ -34,6 +34,7 @@ export class AkivCraftRuntime {
   private readonly keyPressListeners = new Set<(key: string) => void>()
   private readonly keyReleaseListeners = new Set<(key: string) => void>()
   private readonly itemUseHandlers = new Map<string, ItemUseHandler>()
+  private readonly blockEventListeners = new Map<BlockEventType, Set<BlockEventHandler>>()
   private readonly chatListeners = new Set<(message: ChatMessage) => void>()
   private readonly stateClient: StateClient
   private readonly ipcServer: IpcServer
@@ -44,7 +45,7 @@ export class AkivCraftRuntime {
 
   constructor(private readonly options: RuntimeOptions) {
     this.stateClient = new StateClient(options.statePort, options.minecraftVersion)
-    this.ipcServer = new IpcServer(options.port, this.hud, this.keybindings, this.keyPressListeners, this.keyReleaseListeners, this.itemUseHandlers, this.chatListeners)
+    this.ipcServer = new IpcServer(options.port, this.hud, this.keybindings, this.keyPressListeners, this.keyReleaseListeners, this.itemUseHandlers, this.blockEventListeners, this.chatListeners)
     this.binaryIpcServer = new BinaryIpcServer(options.binaryPort, this.bitmaps)
     this.udpBitmapSender = new UdpBitmapSender(options.udpPort, this.bitmaps)
     this.stdioIpcTransport = new StdioIpcTransport(this.stateClient, this.ipcServer, this.bitmaps, this.keybindings, this.items)
@@ -118,6 +119,15 @@ export class AkivCraftRuntime {
       console.error(`Failed to parse ${filePath}`, error)
       return {}
     }
+  }
+
+  private addFilteredBlockListener(type: BlockEventType, listener: BlockEventHandler): void {
+    let listeners = this.blockEventListeners.get(type)
+    if (!listeners) {
+      listeners = new Set()
+      this.blockEventListeners.set(type, listeners)
+    }
+    listeners.add(listener)
   }
 
   private async writeLoadedModsManifest(): Promise<void> {
@@ -230,6 +240,27 @@ export class AkivCraftRuntime {
           this.itemUseHandlers.set(itemId, callback)
           console.log(`Registered AkivCraft item use handler: ${itemId}`)
         },
+      },
+      events: {
+        on: (type, callback) => {
+          let listeners = this.blockEventListeners.get(type)
+          if (!listeners) {
+            listeners = new Set()
+            this.blockEventListeners.set(type, listeners)
+          }
+          listeners.add(callback)
+        },
+      },
+      blocks: {
+        onUse: (blockId, callback) => this.addFilteredBlockListener("use_block", (ctx) => {
+          if (ctx.targetBlock === blockId) return callback(ctx)
+        }),
+        onPlace: (blockId, callback) => this.addFilteredBlockListener("place_block", (ctx) => {
+          if (ctx.placedBlock === blockId || ctx.placeBlock === blockId) return callback(ctx)
+        }),
+        onBreak: (blockId, callback) => this.addFilteredBlockListener("break_block", (ctx) => {
+          if (ctx.brokenBlock === blockId || ctx.currentBlock === blockId) return callback(ctx)
+        }),
       },
       creative: {
         registerTab: (tab) => {

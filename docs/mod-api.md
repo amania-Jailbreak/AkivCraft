@@ -162,6 +162,37 @@ The item sample mod registers `akivcraft.item_sample:akiv_gem`, `akivcraft.item_
 /give @s akivcraft.item_sample:akiv_pickaxe
 ```
 
+## Block Events
+
+- `api.events.on("use_block", callback)` listens after a server-side block right click.
+- `api.events.on("place_block", callback)` listens after a likely block placement caused by right click.
+- `api.events.on("break_block", callback)` listens after server-side block destruction.
+- `api.blocks.onUse(blockId, callback)`, `api.blocks.onPlace(blockId, callback)`, and `api.blocks.onBreak(blockId, callback)` are convenience filters by block id.
+
+Block event context includes player, dimension, item id, hand, target block/position, clicked face, click position, placement position, broken block, current block, and consumed result when available.
+
+Example:
+
+```js
+export default {
+  id: "portal-sample",
+  name: "Portal Sample",
+  onEnable(api) {
+    api.events.on("use_block", (ctx) => {
+      if (ctx.itemId === "minecraft:flint_and_steel" && ctx.targetBlock === "minecraft:obsidian") {
+        api.chat.send(`Portal trigger at ${ctx.targetPos.x}, ${ctx.targetPos.y}, ${ctx.targetPos.z}`)
+      }
+    })
+
+    api.blocks.onPlace("minecraft:diamond_block", (ctx) => {
+      api.chat.send(`Diamond block placed in ${ctx.dimension}`)
+    })
+  }
+}
+```
+
+The first implementation is notification-only. It does not cancel vanilla placement/use. Use it for triggers, logging, portal detection, and multiblock rescans around the changed position.
+
 ## Metadata
 
 Each mod can include `mod.json`:

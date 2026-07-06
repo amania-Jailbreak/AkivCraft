@@ -75,6 +75,9 @@ export class StdioIpcTransport {
         ].join("\t"))
       } else if (message.type === "chatMessage") {
         this.ipcServer.handleChatMessage(`chatMessage\t${message.chatType ?? "system"}\t${message.text ?? ""}`)
+      } else if (message.type === "blockEvent" && message.data) {
+        const json = Buffer.from(message.data, "base64").toString("utf8")
+        this.ipcServer.handleBlockEvent(`blockEvent\t${json}`)
       }
     } catch (error) {
       console.error("AkivCraft stdio IPC parse failed", error)

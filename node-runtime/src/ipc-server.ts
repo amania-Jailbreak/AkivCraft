@@ -1,11 +1,12 @@
 import net from "node:net"
-import type { ChatMessage, HudPrimitive, HudTextOptions, ItemUseContext, KeyBinding } from "./api.js"
+import type { BlockEventContext, BlockEventType, ChatMessage, HudPrimitive, HudTextOptions, ItemUseContext, KeyBinding } from "./api.js"
 
 export type HudEntry =
   | { kind: "text", value: () => string, options: HudTextOptions }
   | { kind: "canvas", render: () => HudPrimitive[] }
 
 export type ItemUseHandler = (ctx: ItemUseContext) => void | Promise<void>
+export type BlockEventHandler = (ctx: BlockEventContext) => void | Promise<void>
 
 const encode = (value: string): string => Buffer.from(value, "utf8").toString("base64")
 
@@ -28,6 +29,7 @@ export class IpcServer {
     private readonly keyPressListeners: Set<(key: string) => void>,
     private readonly keyReleaseListeners: Set<(key: string) => void>,
     private readonly itemUseHandlers: Map<string, ItemUseHandler>,
+    private readonly blockEventListeners: Map<BlockEventType, Set<BlockEventHandler>>,
     private readonly chatListeners: Set<(message: ChatMessage) => void>,
   ) {
   }
@@ -52,6 +54,9 @@ export class IpcServer {
           socket.end("OK\n")
         } else if (request.startsWith("itemUse\t")) {
           this.handleItemUse(request)
+          socket.end("OK\n")
+        } else if (request.startsWith("blockEvent\t")) {
+          this.handleBlockEvent(request)
           socket.end("OK\n")
         } else if (request.startsWith("chatMessage\t")) {
           this.handleChatMessage(request)
@@ -170,6 +175,28 @@ export class IpcServer {
       void handler(ctx)
     } catch (error) {
       console.error(`AkivCraft item use handler for '${itemId}' failed`, error)
+    }
+  }
+
+  handleBlockEvent(request: string): void {
+    const json = request.slice("blockEvent\t".length)
+    let ctx: BlockEventContext
+    try {
+      ctx = JSON.parse(json) as BlockEventContext
+    } catch (error) {
+      console.error("AkivCraft block event parse failed", error)
+      return
+    }
+
+    const listeners = this.blockEventListeners.get(ctx.type)
+    if (!listeners) return
+
+    for (const listener of listeners) {
+      try {
+        void listener(ctx)
+      } catch (error) {
+        console.error(`AkivCraft block event handler for '${ctx.type}' failed`, error)
+      }
     }
   }
 

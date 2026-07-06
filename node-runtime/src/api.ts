@@ -95,6 +95,34 @@ export type ItemUseContext = {
   rayHit: { x: number, y: number, z: number } | null
 }
 
+export type BlockPos = { x: number, y: number, z: number }
+
+export type BlockEventType = "use_block" | "place_block" | "break_block"
+
+export type BlockEventContext = {
+  type: BlockEventType
+  phase: "before" | "after"
+  player: string
+  uuid?: string
+  dimension: string
+  playerPos?: ClientPosition
+  itemId?: string
+  hand?: "main_hand" | "off_hand" | "unknown"
+  targetBlock?: string
+  targetPos?: BlockPos
+  face?: "up" | "down" | "north" | "south" | "west" | "east" | "unknown"
+  click?: ClientPosition
+  placePos?: BlockPos
+  placeBlock?: string
+  placedBlock?: string
+  breakPos?: BlockPos
+  brokenBlock?: string
+  currentBlock?: string
+  consumed?: boolean
+}
+
+export type BlockEventHandler = (ctx: BlockEventContext) => void | Promise<void>
+
 export type CreativeTabDefinition = {
   id: string
   name: string
@@ -252,6 +280,14 @@ export type AkivCraftApi = {
   items: {
     register(item: ItemDefinition): void
     onUse(itemId: string, callback: (ctx: ItemUseContext) => void | Promise<void>): void
+  }
+  events: {
+    on(type: BlockEventType, callback: BlockEventHandler): void
+  }
+  blocks: {
+    onUse(blockId: string, callback: BlockEventHandler): void
+    onPlace(blockId: string, callback: BlockEventHandler): void
+    onBreak(blockId: string, callback: BlockEventHandler): void
   }
   creative: {
     registerTab(tab: CreativeTabDefinition): void
