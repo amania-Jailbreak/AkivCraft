@@ -168,6 +168,61 @@ The item sample mod registers `akivcraft.item_sample:akiv_gem`, `akivcraft.item_
 /give @s akivcraft.item_sample:akiv_pickaxe
 ```
 
+## Recipes
+
+- `api.recipes.register(recipe)` registers a custom recipe directly into Minecraft's `RecipeManager` at startup. No data pack JSON files are needed.
+
+Supported recipe types: `crafting_shapeless`, `crafting_shaped`, `smelting`, `blasting`, `smoking`, `campfire_cooking`, `stonecutting`, `smithing_transform`, `smithing_trim`.
+
+Example:
+
+```js
+api.recipes.register({
+  id: "akivcraft.mymod:ruby_from_diamonds",
+  type: "crafting_shapeless",
+  ingredients: [{ item: "minecraft:diamond" }, { item: "minecraft:emerald" }],
+  result: { id: "akivcraft.mymod:ruby", count: 1 },
+})
+```
+
+## Blocks
+
+- `api.blocks.register(block)` registers a custom block directly in Minecraft's `BLOCK` registry at freeze time.
+
+Supported fields: `id`, `material`, `hardness`, `explosionResistance`, `lightLevel`, `requiresTool`, `instabreak`, `noCollision`, `noOcclusion`, `friction`, `speedFactor`, `jumpFactor`, `pushReaction`, and `mapColor`.
+
+Example:
+
+```js
+api.blocks.register({
+  id: "akivcraft.mymod:ruby_block",
+  material: "stone",
+  hardness: 3.0,
+  explosionResistance: 3.0,
+  requiresTool: true,
+})
+```
+
+## Entities
+
+- `api.entities.register(entity)` registers a custom entity type directly in Minecraft's `ENTITY_TYPE` registry at freeze time.
+
+Supported fields: `id`, `width`, `height`, `fireImmune`, `summonable`, `trackingRange`, `updateInterval`, and `clientTrackingRange`.
+
+Example:
+
+```js
+api.entities.register({
+  id: "akivcraft.mymod:ruby_golem",
+  width: 1.4,
+  height: 2.7,
+  fireImmune: true,
+  summonable: true,
+})
+```
+
+Custom entities use a vanilla pig factory as placeholder until a custom entity class and renderer are implemented.
+
 ## Block Events
 
 - `api.events.on("use_block", callback)` listens after a server-side block right click.
@@ -256,7 +311,7 @@ api.dimensions.register({
 })
 ```
 
-Dimensions are registered at mod startup. The data pack is generated before Minecraft loads world data, so custom dimensions are available for new worlds. Existing worlds need the data pack added manually.
+Dimensions are registered directly in Minecraft's `DIMENSION_TYPE` and `LEVEL_STEM` registries at registry freeze time — no data packs are used. The chunk generator is cloned from an existing dimension (`overworld`, `nether`, or `end` via `generator.template`). New worlds will automatically include custom dimensions.
 
 ## Biomes
 
@@ -264,7 +319,7 @@ Dimensions are registered at mod startup. The data pack is generated before Mine
 
 Supported fields include `id`, `temperature`, `downfall`, `hasPrecipitation`, `noise` (temperature/humidity/continentalness/erosion/depth/weirdness ranges and offset), `source` (`"overworld"`, `"nether"`, or `"all"`), `skyColor`, `fogColor`, `waterColor`, `grassColor`, `foliageColor`, `spawners`, `spawnCosts`, `backgroundMusic`, `ambientSound`, and various boolean attributes.
 
-`features` and `carvers` fields are accepted in the definition but are not yet applied in MC 26.1.2 — `BiomeGenerationSettings` has no public builder in this version. Custom biomes use empty generation settings (no trees, ores, or caves) until a future MC version exposes the builder API.
+`features` and `carvers` fields are applied through `PLACED_FEATURE` and `CONFIGURED_CARVER` registry injection. Register custom features via `api.features.register(...)` and custom carvers via `api.carvers.register(...)`, then reference them by id in biome definitions.
 
 Example:
 

@@ -94,8 +94,14 @@ public final class AkivCraftBootCoordinator {
     private static void resetGeneratedState(LoaderConfig config) throws IOException {
         Files.createDirectories(config.modsDirectory());
         deleteIfExists(config.modsDirectory().resolve("loaded-items.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-recipes.json"));
         deleteIfExists(config.modsDirectory().resolve("loaded-creative-tabs.json"));
         deleteIfExists(config.modsDirectory().resolve("loaded-biomes.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-blocks.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-entities.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-features.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-carvers.json"));
+        deleteIfExists(config.modsDirectory().resolve("loaded-dimensions.json"));
         deleteIfExists(config.modsDirectory().resolve("loaded-mods.json"));
         deleteTree(config.akivcraftHome().resolve("generated-resourcepacks"));
     }
@@ -103,8 +109,14 @@ public final class AkivCraftBootCoordinator {
     private static void waitForGeneratedState(LoaderConfig config, long timeoutMillis) {
         var requiredFiles = List.of(
             config.modsDirectory().resolve("loaded-items.json"),
+            config.modsDirectory().resolve("loaded-recipes.json"),
             config.modsDirectory().resolve("loaded-creative-tabs.json"),
             config.modsDirectory().resolve("loaded-biomes.json"),
+            config.modsDirectory().resolve("loaded-blocks.json"),
+            config.modsDirectory().resolve("loaded-entities.json"),
+            config.modsDirectory().resolve("loaded-features.json"),
+            config.modsDirectory().resolve("loaded-carvers.json"),
+            config.modsDirectory().resolve("loaded-dimensions.json"),
             config.modsDirectory().resolve("loaded-mods.json")
         );
         var packsDir = config.akivcraftHome().resolve("generated-resourcepacks");

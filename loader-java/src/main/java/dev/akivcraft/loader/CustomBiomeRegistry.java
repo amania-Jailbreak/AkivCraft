@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -21,6 +22,8 @@ import net.minecraft.world.level.biome.BiomeSpecialEffects;
 import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList;
+import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -337,8 +340,55 @@ public final class CustomBiomeRegistry {
                 return BiomeGenerationSettings.EMPTY;
             }
 
-            System.out.println("AkivCraft custom biome features/carvers requested but BiomeGenerationSettings has no public builder in MC 26.1.2; falling back to EMPTY");
-            return BiomeGenerationSettings.EMPTY;
+            var featureRegistry = CustomFeatureRegistry.frozenRegistry();
+            var carverRegistry = CustomCarverRegistry.frozenRegistry();
+            if (featureRegistry == null && carverRegistry == null) {
+                System.err.println("AkivCraft biome features/carvers requested but registries not frozen yet; using EMPTY");
+                return BiomeGenerationSettings.EMPTY;
+            }
+
+            try {
+                var carverHolders = new ArrayList<Holder<ConfiguredWorldCarver<?>>>();
+                if (carversJson != null && carverRegistry != null) {
+                    for (var element : carversJson) {
+                        if (!element.isJsonPrimitive()) continue;
+                        var id = Identifier.parse(element.getAsString());
+                        carverRegistry.get(ResourceKey.create(Registries.CONFIGURED_CARVER, id))
+                            .ifPresent(carverHolders::add);
+                    }
+                }
+                var carverSet = HolderSet.direct(carverHolders);
+
+                var featureSteps = new ArrayList<HolderSet<PlacedFeature>>();
+                if (featuresJson != null && featureRegistry != null) {
+                    for (var stepArray : featuresJson) {
+                        if (!stepArray.isJsonArray()) {
+                            featureSteps.add(HolderSet.empty());
+                            continue;
+                        }
+                        var stepHolders = new ArrayList<Holder<PlacedFeature>>();
+                        for (var featureElement : stepArray.getAsJsonArray()) {
+                            if (!featureElement.isJsonPrimitive()) continue;
+                            var id = Identifier.parse(featureElement.getAsString());
+                            featureRegistry.get(ResourceKey.create(Registries.PLACED_FEATURE, id))
+                                .ifPresent(stepHolders::add);
+                        }
+                        featureSteps.add(HolderSet.direct(stepHolders));
+                    }
+                }
+
+                var constructor = BiomeGenerationSettings.class.getDeclaredConstructor(
+                    HolderSet.class,
+                    java.util.List.class
+                );
+                constructor.setAccessible(true);
+                var settings = constructor.newInstance(carverSet, featureSteps);
+                AkivCraftLoadingLog.info("Built BiomeGenerationSettings with " + carverHolders.size() + " carvers and " + featureSteps.size() + " feature steps");
+                return settings;
+            } catch (Throwable error) {
+                System.err.printf("AkivCraft failed to build BiomeGenerationSettings: %s%n", error.getMessage());
+                return BiomeGenerationSettings.EMPTY;
+            }
         }
     }
 

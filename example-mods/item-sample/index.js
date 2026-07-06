@@ -18,10 +18,7 @@ export default {
     "assets/akivcraft.item_sample/items/grappling_hook.json": "./assets/items/grappling_hook.json",
     "assets/akivcraft.item_sample/models/item/grappling_hook.json": "./assets/models/item/grappling_hook.json",
     "assets/akivcraft.item_sample/lang/en_us.json": "./assets/lang/en_us.json",
-    "assets/akivcraft.item_sample/lang/ja_jp.json": "./assets/lang/ja_jp.json",
-    "data/akivcraft.item_sample/recipe/akiv_gem.json": "./data/akivcraft.item_sample/recipe/akiv_gem.json",
-    "data/akivcraft.item_sample/recipe/akiv_sword.json": "./data/akivcraft.item_sample/recipe/akiv_sword.json",
-    "data/akivcraft.item_sample/recipe/akiv_pickaxe.json": "./data/akivcraft.item_sample/recipe/akiv_pickaxe.json"
+    "assets/akivcraft.item_sample/lang/ja_jp.json": "./assets/lang/ja_jp.json"
   },
   onEnable(api) {
     api.creative.registerTab({

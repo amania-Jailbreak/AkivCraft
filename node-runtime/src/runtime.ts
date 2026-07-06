@@ -34,6 +34,11 @@ export class AkivCraftRuntime {
   private readonly biomes = new Map<string, BiomeDefinition>()
   private readonly biomeOwners = new Map<string, string>()
   private readonly dimensions = new Map<string, import("./api.js").DimensionDefinition>()
+  private readonly recipes = new Map<string, import("./api.js").RecipeDefinition>()
+  private readonly blocks = new Map<string, import("./api.js").BlockDefinition>()
+  private readonly entities = new Map<string, import("./api.js").EntityDefinition>()
+  private readonly features = new Map<string, import("./api.js").FeatureDefinition>()
+  private readonly carvers = new Map<string, import("./api.js").CarverDefinition>()
   private readonly keyPressListeners = new Set<(key: string) => void>()
   private readonly keyReleaseListeners = new Set<(key: string) => void>()
   private readonly itemUseHandlers = new Map<string, ItemUseHandler>()
@@ -92,8 +97,13 @@ export class AkivCraftRuntime {
       await mod.onEnable?.(this.createApi(mod))
     }
     await this.writeLoadedItemsManifest()
+    await this.writeLoadedRecipesManifest()
     await this.writeLoadedCreativeTabsManifest()
     await this.writeLoadedBiomesManifest()
+    await this.writeLoadedBlocksManifest()
+    await this.writeLoadedEntitiesManifest()
+    await this.writeLoadedFeaturesManifest()
+    await this.writeLoadedCarversManifest()
     await this.writeLoadedDimensionsManifest()
     await this.generateResourcePacks()
   }
@@ -177,6 +187,51 @@ export class AkivCraftRuntime {
     await writeFile(path.join(this.options.modsDirectory, "loaded-mods.json"), `${JSON.stringify({ mods }, null, 2)}\n`).catch(() => undefined)
   }
 
+  private async writeLoadedRecipesManifest(): Promise<void> {
+    const recipes = [...this.recipes.values()]
+    if (recipes.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-recipes.json"),
+      `${JSON.stringify({ recipes }, null, 2)}\n`,
+    ).catch(() => undefined)
+  }
+
+  private async writeLoadedBlocksManifest(): Promise<void> {
+    const blocks = [...this.blocks.values()]
+    if (blocks.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-blocks.json"),
+      `${JSON.stringify({ blocks }, null, 2)}\n`,
+    ).catch(() => undefined)
+  }
+
+  private async writeLoadedEntitiesManifest(): Promise<void> {
+    const entities = [...this.entities.values()]
+    if (entities.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-entities.json"),
+      `${JSON.stringify({ entities }, null, 2)}\n`,
+    ).catch(() => undefined)
+  }
+
+  private async writeLoadedFeaturesManifest(): Promise<void> {
+    const features = [...this.features.values()]
+    if (features.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-features.json"),
+      `${JSON.stringify({ features }, null, 2)}\n`,
+    ).catch(() => undefined)
+  }
+
+  private async writeLoadedCarversManifest(): Promise<void> {
+    const carvers = [...this.carvers.values()]
+    if (carvers.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-carvers.json"),
+      `${JSON.stringify({ carvers }, null, 2)}\n`,
+    ).catch(() => undefined)
+  }
+
   private async generateResourcePacks(): Promise<void> {
     const outputDir = path.resolve(this.options.modsDirectory, "..", "generated-resourcepacks")
     await rm(outputDir, { recursive: true, force: true }).catch(() => undefined)
@@ -217,67 +272,7 @@ export class AkivCraftRuntime {
     }
 
     if (this.dimensions.size > 0) {
-      const dimPackDir = path.join(outputDir, "akivcraft.dimensions")
-      await mkdir(dimPackDir, { recursive: true })
-
-      const mcmeta = { pack: { min_format: [84, 0], max_format: 101, description: "AkivCraft custom dimensions" } }
-      await writeFile(path.join(dimPackDir, "pack.mcmeta"), `${JSON.stringify(mcmeta, null, 2)}\n`)
-
-      for (const dim of this.dimensions.values()) {
-        const [namespace, dimPath] = dim.id.split(":", 2)
-        if (!namespace || !dimPath) continue
-
-        const dataDir = path.join(dimPackDir, "data", namespace)
-        await mkdir(path.join(dataDir, "dimension"), { recursive: true })
-        await mkdir(path.join(dataDir, "dimension_type"), { recursive: true })
-
-        const typeId = `${dim.id}_type`
-        const type = dim.type ?? {}
-        const typeJson = {
-          ultrawarm: type.ultrawarm ?? false,
-          natural: type.natural ?? true,
-          coordinate_scale: type.coordinateScale ?? 1.0,
-          has_skylight: type.hasSkylight ?? true,
-          has_ceiling: type.hasCeiling ?? false,
-          ambient_light: type.ambientLight ?? 0.0,
-          fixed_time: type.fixedTime ?? null,
-          monster_spawn_light_level: type.monsterSpawnLightLevel ?? 0,
-          monster_spawn_block_light_limit: type.monsterSpawnBlockLightLimit ?? 0,
-          piglin_safe: type.piglinSafe ?? false,
-          bed_works: type.bedWorks ?? true,
-          respawn_anchor_works: type.respawnAnchorWorks ?? false,
-          has_raids: type.hasRaids ?? true,
-          logical_height: type.logicalHeight ?? type.height ?? 256,
-          min_y: type.minY ?? 0,
-          height: type.height ?? 256,
-          infiniburn: type.infiniburn ?? "#minecraft:infiniburn_overworld",
-          effects: type.effects ?? "minecraft:overworld",
-        }
-        await writeFile(
-          path.join(dataDir, "dimension_type", `${dimPath}.json`),
-          `${JSON.stringify(typeJson, null, 2)}\n`,
-        )
-
-        const gen = dim.generator ?? {}
-        const dimJson = {
-          type: typeId,
-          generator: {
-            type: gen.type ?? "minecraft:noise",
-            settings: gen.settings ?? "minecraft:overworld",
-            biome_source: {
-              type: gen.biomeSource?.type ?? "minecraft:multi_noise",
-              preset: gen.biomeSource?.preset ?? "minecraft:overworld",
-            },
-            seed: gen.seed ?? 0,
-          },
-        }
-        await writeFile(
-          path.join(dataDir, "dimension", `${dimPath}.json`),
-          `${JSON.stringify(dimJson, null, 2)}\n`,
-        )
-
-        console.log(`AkivCraft generated dimension data pack for ${dim.id}`)
-      }
+      console.warn("AkivCraft: dimensions are now registered directly in Java registries; generated dimension data packs are no longer used")
     }
   }
 
@@ -340,6 +335,12 @@ export class AkivCraftRuntime {
           console.log(`Registered AkivCraft item use handler: ${itemId}`)
         },
       },
+      recipes: {
+        register: (recipe) => {
+          this.recipes.set(recipe.id, recipe)
+          console.log(`Registered AkivCraft recipe definition: ${recipe.id}`)
+        },
+      },
       events: {
         on: (type, callback) => {
           let listeners = this.blockEventListeners.get(type)
@@ -351,6 +352,10 @@ export class AkivCraftRuntime {
         },
       },
       blocks: {
+        register: (block) => {
+          this.blocks.set(block.id, block)
+          console.log(`Registered AkivCraft block definition: ${block.id}`)
+        },
         onUse: (blockId, callback) => this.addFilteredBlockListener("use_block", (ctx) => {
           if (ctx.targetBlock === blockId) return callback(ctx)
         }),
@@ -401,10 +406,28 @@ export class AkivCraftRuntime {
           console.log(`Registered AkivCraft biome definition: ${biome.id}`)
         },
       },
+      features: {
+        register: (feature) => {
+          this.features.set(feature.id, feature)
+          console.log(`Registered AkivCraft feature definition: ${feature.id}`)
+        },
+      },
+      carvers: {
+        register: (carver) => {
+          this.carvers.set(carver.id, carver)
+          console.log(`Registered AkivCraft carver definition: ${carver.id}`)
+        },
+      },
       dimensions: {
         register: (dimension) => {
           this.dimensions.set(dimension.id, dimension)
           console.log(`Registered AkivCraft dimension: ${dimension.id}`)
+        },
+      },
+      entities: {
+        register: (entity) => {
+          this.entities.set(entity.id, entity)
+          console.log(`Registered AkivCraft entity definition: ${entity.id}`)
         },
       },
       chat: {

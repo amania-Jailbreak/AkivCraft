@@ -130,6 +130,82 @@ export type CreativeTabDefinition = {
   row?: "top" | "bottom"
 }
 
+export type RecipeType =
+  | "crafting_shapeless"
+  | "crafting_shaped"
+  | "smelting"
+  | "blasting"
+  | "smoking"
+  | "campfire_cooking"
+  | "stonecutting"
+  | "smithing_transform"
+  | "smithing_trim"
+
+export type RecipeIngredient = string | { item?: string, tag?: string }
+
+export type RecipeDefinition = {
+  id: string
+  type: RecipeType
+  group?: string
+  ingredients?: RecipeIngredient[] | RecipeIngredient[][]
+  result?: string | { id: string, count?: number }
+  pattern?: string[]
+  experience?: number
+  cookingTime?: number
+  base?: RecipeIngredient
+  addition?: RecipeIngredient
+  template?: RecipeIngredient
+}
+
+export type BlockMaterial = "wood" | "stone" | "metal" | "dirt" | "sand" | "glass" | "wool" | "leaves" | "other"
+
+export type BlockDefinition = {
+  id: string
+  name?: string
+  material?: BlockMaterial
+  hardness?: number
+  destroyTime?: number
+  explosionResistance?: number
+  lightLevel?: number
+  friction?: number
+  speedFactor?: number
+  jumpFactor?: number
+  requiresTool?: boolean
+  instabreak?: boolean
+  noCollision?: boolean
+  noOcclusion?: boolean
+  air?: boolean
+  liquid?: boolean
+  solid?: boolean
+  pushReaction?: "normal" | "destroy" | "block" | "push_only"
+  mapColor?: string
+}
+
+export type EntityDefinition = {
+  id: string
+  name?: string
+  width?: number
+  height?: number
+  fireImmune?: boolean
+  summonable?: boolean
+  spawnFarFromPlayer?: boolean
+  trackingRange?: number
+  updateInterval?: number
+  clientTrackingRange?: number
+}
+
+export type FeatureDefinition = {
+  id: string
+  type: string
+  config?: Record<string, unknown>
+}
+
+export type CarverDefinition = {
+  id: string
+  type: string
+  config?: Record<string, unknown>
+}
+
 export type BiomeNoiseRange = number | [number, number]
 
 export type BiomeSpawn = {
@@ -319,20 +395,33 @@ export type AkivCraftApi = {
     register(item: ItemDefinition): void
     onUse(itemId: string, callback: (ctx: ItemUseContext) => void | Promise<void>): void
   }
+  recipes: {
+    register(recipe: RecipeDefinition): void
+  }
   events: {
     on(type: BlockEventType, callback: BlockEventHandler): void
   }
   blocks: {
+    register(block: BlockDefinition): void
     onUse(blockId: string, callback: BlockEventHandler): void
     onPlace(blockId: string, callback: BlockEventHandler): void
     onBreak(blockId: string, callback: BlockEventHandler): void
     detectPattern(anchor: BlockPos, pattern: Record<string, string>): Promise<boolean>
+  }
+  entities: {
+    register(entity: EntityDefinition): void
   }
   creative: {
     registerTab(tab: CreativeTabDefinition): void
   }
   biomes: {
     register(biome: BiomeDefinition): void
+  }
+  features: {
+    register(feature: FeatureDefinition): void
+  }
+  carvers: {
+    register(carver: CarverDefinition): void
   }
   dimensions: {
     register(dimension: DimensionDefinition): void
