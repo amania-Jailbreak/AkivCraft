@@ -23,6 +23,7 @@ public final class CustomDimensionRegistry {
     public static void registerTypesFromFile(Path file, Object registryObject) {
         var registry = (Registry<DimensionType>) registryObject;
         dimensionTypeRegistry = registry;
+        System.out.printf("AkivCraft registerTypesFromFile called: %s exists=%s%n", file, Files.isRegularFile(file));
         if (!Files.isRegularFile(file)) return;
 
         try {
@@ -88,6 +89,7 @@ public final class CustomDimensionRegistry {
     @SuppressWarnings("unchecked")
     public static void registerStemsFromFile(Path file, Object registryObject) {
         var registry = (Registry<LevelStem>) registryObject;
+        System.out.printf("AkivCraft registerStemsFromFile called: %s exists=%s%n", file, Files.isRegularFile(file));
         if (!Files.isRegularFile(file)) return;
 
         var overworldStem = registry.get(LevelStem.OVERWORLD).map(Holder.Reference::value).orElse(null);

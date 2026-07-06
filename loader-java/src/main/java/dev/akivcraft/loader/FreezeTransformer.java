@@ -69,6 +69,10 @@ public final class FreezeTransformer implements ClassFileTransformer {
         try {
             var keyMethod = registry.getClass().getMethod("key");
             var registryKey = keyMethod.invoke(registry);
+            var registryKeyString = String.valueOf(registryKey);
+            if (registryKeyString.contains("dimension") || registryKeyString.contains("level_stem")) {
+                System.out.printf("AkivCraft freeze hook saw registry key: %s (%s)%n", registryKeyString, registry.getClass().getName());
+            }
             if (net.minecraft.core.registries.Registries.ITEM.equals(registryKey)) {
                 AkivCraftBootCoordinator.awaitPreparedOrThrow();
                 if (!itemsRegistered) {
