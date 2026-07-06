@@ -55,7 +55,7 @@ Block edits run on the game thread and are asynchronous from the mod's perspecti
 
 `sprite` primitives draw textures from Minecraft resource packs. Mods can generate resource packs by declaring a `resources` map on the mod export. Resource files are copied into `.akivcraft/generated-resourcepacks/<pack-id>` and loaded by the Java loader during startup or shortly after generation.
 
-Generated resources can include item textures and item model JSON. Full runtime item registry injection is not implemented yet, so `example-mods/item-sample` demonstrates the asset/data-pack side of a custom item and a HUD preview rather than a new registered Minecraft item id.
+Generated resources can include item textures and item model JSON. Runtime item registration is implemented in Java, so `example-mods/item-sample` demonstrates direct item registration plus resource-pack-backed client rendering.
 
 Example:
 
@@ -174,6 +174,8 @@ The item sample mod registers `akivcraft.item_sample:akiv_gem`, `akivcraft.item_
 
 Supported recipe types: `crafting_shapeless`, `crafting_shaped`, `smelting`, `blasting`, `smoking`, `campfire_cooking`, `stonecutting`, `smithing_transform`, `smithing_trim`.
 
+For `crafting_shapeless`, `ingredients` is an array. For `crafting_shaped`, `pattern` is an array of strings and `ingredients` is a key map like `{ A: { item: "minecraft:stone" } }`.
+
 Example:
 
 ```js
@@ -222,6 +224,31 @@ api.entities.register({
 ```
 
 Custom entities use a vanilla pig factory as placeholder until a custom entity class and renderer are implemented.
+
+## Features And Carvers
+
+- `api.features.register(feature)` registers a custom placed feature directly in Java registries.
+- `api.carvers.register(carver)` registers a custom configured carver directly in Java registries.
+
+These APIs are intentionally low-level and mirror Minecraft's own configured JSON shape. The current implementation wraps feature definitions as a placed feature with empty placement modifiers.
+
+Example:
+
+```js
+api.features.register({
+  id: "akivcraft.mymod:noop_feature",
+  type: "minecraft:no_op",
+  config: {},
+})
+
+api.carvers.register({
+  id: "akivcraft.mymod:cave_copy",
+  type: "minecraft:cave",
+  config: {
+    probability: 0.0,
+  },
+})
+```
 
 ## Block Events
 
@@ -305,8 +332,7 @@ api.dimensions.register({
     effects: "minecraft:the_end",
   },
   generator: {
-    type: "minecraft:flat",
-    settings: "minecraft:the_void",
+    template: "end",
   },
 })
 ```

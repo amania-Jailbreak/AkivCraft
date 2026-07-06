@@ -147,7 +147,7 @@ export type RecipeDefinition = {
   id: string
   type: RecipeType
   group?: string
-  ingredients?: RecipeIngredient[] | RecipeIngredient[][]
+  ingredients?: RecipeIngredient[] | Record<string, RecipeIngredient>
   result?: string | { id: string, count?: number }
   pattern?: string[]
   experience?: number
@@ -363,6 +363,7 @@ export type DimensionTypeDefinition = {
 }
 
 export type DimensionGeneratorDefinition = {
+  template?: "overworld" | "nether" | "end"
   type?: string
   settings?: string
   biomeSource?: {

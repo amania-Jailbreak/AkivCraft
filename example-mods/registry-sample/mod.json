@@ -1,0 +1,6 @@
+{
+  "id": "registry-sample",
+  "name": "Registry Sample",
+  "version": "0.1.0",
+  "description": "Direct Java registry injection sample for blocks, entities, dimensions, and worldgen references."
+}

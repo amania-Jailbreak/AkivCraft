@@ -4,7 +4,7 @@ export default {
   id: "item-sample",
   name: "Item Sample",
   version: "0.1.0",
-  description: "Sample generated resources for a future custom item.",
+  description: "Sample direct item and recipe registration with generated client resources.",
   resources: {
     "assets/akivcraft.item_sample/textures/item/akiv_gem.png": "./assets/textures/item/akiv_gem.png",
     "assets/akivcraft.item_sample/textures/item/akiv_sword.png": "./assets/textures/item/akiv_sword.png",
@@ -46,6 +46,16 @@ export default {
       api.chat.send(`Gem used by ${ctx.player} at (${ctx.x.toFixed(1)}, ${ctx.y.toFixed(1)}, ${ctx.z.toFixed(1)})`)
     })
 
+    api.recipes.register({
+      id: "akivcraft.item_sample:akiv_gem",
+      type: "crafting_shapeless",
+      ingredients: [
+        { item: "minecraft:diamond" },
+        { item: "minecraft:emerald" },
+      ],
+      result: { id: "akivcraft.item_sample:akiv_gem", count: 1 },
+    })
+
     api.items.register({
       id: "akivcraft.item_sample:akiv_sword",
       name: "Akiv Sword",
@@ -64,6 +74,21 @@ export default {
       ],
     })
 
+    api.recipes.register({
+      id: "akivcraft.item_sample:akiv_sword",
+      type: "crafting_shaped",
+      pattern: [
+        " G ",
+        " G ",
+        " S ",
+      ],
+      ingredients: {
+        G: { item: "akivcraft.item_sample:akiv_gem" },
+        S: { item: "minecraft:stick" },
+      },
+      result: { id: "akivcraft.item_sample:akiv_sword", count: 1 },
+    })
+
     api.items.register({
       id: "akivcraft.item_sample:akiv_pickaxe",
       name: "Akiv Pickaxe",
@@ -74,6 +99,21 @@ export default {
       miningSpeed: 1,
       rarity: "rare",
       tab: "akivcraft.item_sample:main",
+    })
+
+    api.recipes.register({
+      id: "akivcraft.item_sample:akiv_pickaxe",
+      type: "crafting_shaped",
+      pattern: [
+        "GGG",
+        " S ",
+        " S ",
+      ],
+      ingredients: {
+        G: { item: "akivcraft.item_sample:akiv_gem" },
+        S: { item: "minecraft:stick" },
+      },
+      result: { id: "akivcraft.item_sample:akiv_pickaxe", count: 1 },
     })
 
     api.items.register({
@@ -88,6 +128,21 @@ export default {
         { type: "node_callback", event: "hookshot" },
         { type: "cooldown", ticks: 10 },
       ],
+    })
+
+    api.recipes.register({
+      id: "akivcraft.item_sample:grappling_hook",
+      type: "crafting_shaped",
+      pattern: [
+        "  I",
+        " SI",
+        "S  ",
+      ],
+      ingredients: {
+        I: { item: "minecraft:iron_ingot" },
+        S: { item: "minecraft:string" },
+      },
+      result: { id: "akivcraft.item_sample:grappling_hook", count: 1 },
     })
 
     api.items.onUse("akivcraft.item_sample:grappling_hook", (ctx) => {
@@ -160,7 +215,7 @@ export default {
       ]
     })
 
-    api.chat.send("Item Sample registered Akiv Gem, Sword, and Pickaxe")
+    api.chat.send("Item Sample registered Akiv Gem items and direct Java recipes")
   },
   onDisable(api) {
     if (activeHookshot) clearInterval(activeHookshot)

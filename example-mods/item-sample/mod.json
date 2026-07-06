@@ -2,5 +2,5 @@
   "id": "item-sample",
   "name": "Item Sample",
   "version": "0.1.0",
-  "description": "Sample generated resources for a future custom item."
+  "description": "Direct item and recipe registration sample with generated client resources."
 }
