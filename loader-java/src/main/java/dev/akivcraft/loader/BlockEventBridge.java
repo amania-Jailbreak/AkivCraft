@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,7 +40,7 @@ public final class BlockEventBridge {
             var used = result != null && result.consumesAction();
 
             sendUseBlock(player, level, itemId, hand, targetPos, targetState, face, hit.getLocation(), placePos, placeState, used);
-            if (used && !placeState.isAir()) {
+            if (used && stack.getItem() instanceof BlockItem && !placeState.isAir()) {
                 sendPlaceBlock(player, level, itemId, hand, targetPos, targetState, face, hit.getLocation(), placePos, placeState);
             }
         } catch (Throwable error) {
@@ -68,8 +69,8 @@ public final class BlockEventBridge {
             var player = player(gameMode);
             if (player == null) return;
             var level = player.level();
-            var brokenState = snapshot != null && snapshot.pos().equals(pos) ? snapshot.state() : level.getBlockState(pos);
-            sendBreakBlock(player, level, pos, brokenState, level.getBlockState(pos));
+            if (snapshot == null || !snapshot.pos().equals(pos)) return;
+            sendBreakBlock(player, level, pos, snapshot.state(), level.getBlockState(pos));
         } catch (Throwable error) {
             System.err.printf("AkivCraft block break hook failed: %s%n", error.getMessage());
         }

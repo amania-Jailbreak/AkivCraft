@@ -35,7 +35,6 @@ public final class BlockEventIpc {
         EXECUTOR.execute(() -> {
             try (var socket = new Socket(InetAddress.getLoopbackAddress(), port);
                  var writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
-                socket.setSoTimeout(250);
                 writer.printf(Locale.ROOT, "blockEvent\t%s%n", payload);
             } catch (IOException ignored) {
             }

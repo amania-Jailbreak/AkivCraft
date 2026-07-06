@@ -256,10 +256,10 @@ export class AkivCraftRuntime {
           if (ctx.targetBlock === blockId) return callback(ctx)
         }),
         onPlace: (blockId, callback) => this.addFilteredBlockListener("place_block", (ctx) => {
-          if (ctx.placedBlock === blockId || ctx.placeBlock === blockId) return callback(ctx)
+          if (ctx.placedBlock === blockId) return callback(ctx)
         }),
         onBreak: (blockId, callback) => this.addFilteredBlockListener("break_block", (ctx) => {
-          if (ctx.brokenBlock === blockId || ctx.currentBlock === blockId) return callback(ctx)
+          if (ctx.brokenBlock === blockId) return callback(ctx)
         }),
       },
       creative: {
