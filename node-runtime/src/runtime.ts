@@ -31,6 +31,7 @@ export class AkivCraftRuntime {
   private readonly creativeTabs = new Map<string, import("./api.js").CreativeTabDefinition>()
   private readonly biomes = new Map<string, BiomeDefinition>()
   private readonly biomeOwners = new Map<string, string>()
+  private readonly dimensions = new Map<string, import("./api.js").DimensionDefinition>()
   private readonly keyPressListeners = new Set<(key: string) => void>()
   private readonly keyReleaseListeners = new Set<(key: string) => void>()
   private readonly itemUseHandlers = new Map<string, ItemUseHandler>()
@@ -69,6 +70,7 @@ export class AkivCraftRuntime {
     await this.writeLoadedItemsManifest()
     await this.writeLoadedCreativeTabsManifest()
     await this.writeLoadedBiomesManifest()
+    await this.writeLoadedDimensionsManifest()
     await this.generateResourcePacks()
   }
 
@@ -85,6 +87,15 @@ export class AkivCraftRuntime {
   private async writeLoadedBiomesManifest(): Promise<void> {
     const biomes = [...this.biomes.values()].map((biome) => ({ ...biome, source: biome.source ?? "overworld", noise: normalizeBiomeNoise(biome) }))
     await writeFile(path.join(this.options.modsDirectory, "loaded-biomes.json"), `${JSON.stringify({ biomes }, null, 2)}\n`).catch(() => undefined)
+  }
+
+  private async writeLoadedDimensionsManifest(): Promise<void> {
+    const dimensions = [...this.dimensions.values()]
+    if (dimensions.length === 0) return
+    await writeFile(
+      path.join(this.options.modsDirectory, "loaded-dimensions.json"),
+      `${JSON.stringify({ dimensions }, null, 2)}\n`,
+    ).catch(() => undefined)
   }
 
   private async loadMods(): Promise<void> {
@@ -180,6 +191,70 @@ export class AkivCraftRuntime {
 
       console.log(`AkivCraft generated resource pack for ${mod.id} at ${packDir}`)
     }
+
+    if (this.dimensions.size > 0) {
+      const dimPackDir = path.join(outputDir, "akivcraft.dimensions")
+      await mkdir(dimPackDir, { recursive: true })
+
+      const mcmeta = { pack: { min_format: [84, 0], max_format: 101, description: "AkivCraft custom dimensions" } }
+      await writeFile(path.join(dimPackDir, "pack.mcmeta"), `${JSON.stringify(mcmeta, null, 2)}\n`)
+
+      for (const dim of this.dimensions.values()) {
+        const [namespace, dimPath] = dim.id.split(":", 2)
+        if (!namespace || !dimPath) continue
+
+        const dataDir = path.join(dimPackDir, "data", namespace)
+        await mkdir(path.join(dataDir, "dimension"), { recursive: true })
+        await mkdir(path.join(dataDir, "dimension_type"), { recursive: true })
+
+        const typeId = `${dim.id}_type`
+        const type = dim.type ?? {}
+        const typeJson = {
+          ultrawarm: type.ultrawarm ?? false,
+          natural: type.natural ?? true,
+          coordinate_scale: type.coordinateScale ?? 1.0,
+          has_skylight: type.hasSkylight ?? true,
+          has_ceiling: type.hasCeiling ?? false,
+          ambient_light: type.ambientLight ?? 0.0,
+          fixed_time: type.fixedTime ?? null,
+          monster_spawn_light_level: type.monsterSpawnLightLevel ?? 0,
+          monster_spawn_block_light_limit: type.monsterSpawnBlockLightLimit ?? 0,
+          piglin_safe: type.piglinSafe ?? false,
+          bed_works: type.bedWorks ?? true,
+          respawn_anchor_works: type.respawnAnchorWorks ?? false,
+          has_raids: type.hasRaids ?? true,
+          logical_height: type.logicalHeight ?? type.height ?? 256,
+          min_y: type.minY ?? 0,
+          height: type.height ?? 256,
+          infiniburn: type.infiniburn ?? "#minecraft:infiniburn_overworld",
+          effects: type.effects ?? "minecraft:overworld",
+        }
+        await writeFile(
+          path.join(dataDir, "dimension_type", `${dimPath}.json`),
+          `${JSON.stringify(typeJson, null, 2)}\n`,
+        )
+
+        const gen = dim.generator ?? {}
+        const dimJson = {
+          type: typeId,
+          generator: {
+            type: gen.type ?? "minecraft:noise",
+            settings: gen.settings ?? "minecraft:overworld",
+            biome_source: {
+              type: gen.biomeSource?.type ?? "minecraft:multi_noise",
+              preset: gen.biomeSource?.preset ?? "minecraft:overworld",
+            },
+            seed: gen.seed ?? 0,
+          },
+        }
+        await writeFile(
+          path.join(dataDir, "dimension", `${dimPath}.json`),
+          `${JSON.stringify(dimJson, null, 2)}\n`,
+        )
+
+        console.log(`AkivCraft generated dimension data pack for ${dim.id}`)
+      }
+    }
   }
 
   private createApi(mod: AkivCraftMod): AkivCraftApi {
@@ -261,6 +336,33 @@ export class AkivCraftRuntime {
         onBreak: (blockId, callback) => this.addFilteredBlockListener("break_block", (ctx) => {
           if (ctx.brokenBlock === blockId) return callback(ctx)
         }),
+        detectPattern: async (anchor, pattern) => {
+          const offsets = Object.entries(pattern).map(([key, expectedId]) => {
+            const [dx, dy, dz] = key.split(",").map(Number)
+            return { dx, dy, dz, expectedId }
+          })
+          if (offsets.length === 0) return true
+          const minX = Math.min(...offsets.map((o) => o.dx))
+          const maxX = Math.max(...offsets.map((o) => o.dx))
+          const minY = Math.min(...offsets.map((o) => o.dy))
+          const maxY = Math.max(...offsets.map((o) => o.dy))
+          const minZ = Math.min(...offsets.map((o) => o.dz))
+          const maxZ = Math.max(...offsets.map((o) => o.dz))
+          const blocks = await this.playerActionClient.getBlocks(
+            anchor.x + minX, anchor.y + minY, anchor.z + minZ,
+            anchor.x + maxX, anchor.y + maxY, anchor.z + maxZ,
+          )
+          const blockMap = new Map<string, string>()
+          for (const b of blocks) {
+            blockMap.set(`${b.x},${b.y},${b.z}`, b.id)
+          }
+          for (const { dx, dy, dz, expectedId } of offsets) {
+            const key = `${anchor.x + dx},${anchor.y + dy},${anchor.z + dz}`
+            const actualId = blockMap.get(key) ?? "minecraft:air"
+            if (actualId !== expectedId) return false
+          }
+          return true
+        },
       },
       creative: {
         registerTab: (tab) => {
@@ -273,6 +375,12 @@ export class AkivCraftRuntime {
           this.biomes.set(biome.id, biome)
           this.biomeOwners.set(biome.id, mod.id)
           console.log(`Registered AkivCraft biome definition: ${biome.id}`)
+        },
+      },
+      dimensions: {
+        register: (dimension) => {
+          this.dimensions.set(dimension.id, dimension)
+          console.log(`Registered AkivCraft dimension: ${dimension.id}`)
         },
       },
       chat: {
@@ -322,6 +430,8 @@ export class AkivCraftRuntime {
         entities: () => worldState().entities ?? [],
         setBlock: (x, y, z, blockId) => this.playerActionClient.setBlock(x, y, z, blockId),
         removeBlock: (x, y, z) => this.playerActionClient.removeBlock(x, y, z),
+        getBlock: (x, y, z) => this.playerActionClient.getBlock(x, y, z),
+        getBlocks: (x1, y1, z1, x2, y2, z2) => this.playerActionClient.getBlocks(x1, y1, z1, x2, y2, z2),
       },
       server: {
         state: serverState,

@@ -265,6 +265,44 @@ export type GameState = {
   paused: boolean
 }
 
+export type DimensionTypeDefinition = {
+  height?: number
+  minY?: number
+  logicalHeight?: number
+  ambientLight?: number
+  hasSkylight?: boolean
+  hasCeiling?: boolean
+  ultrawarm?: boolean
+  natural?: boolean
+  coordinateScale?: number
+  bedWorks?: boolean
+  respawnAnchorWorks?: boolean
+  hasRaids?: boolean
+  piglinSafe?: boolean
+  effects?: string
+  infiniburn?: string
+  fixedTime?: number | null
+  monsterSpawnLightLevel?: number
+  monsterSpawnBlockLightLimit?: number
+}
+
+export type DimensionGeneratorDefinition = {
+  type?: string
+  settings?: string
+  biomeSource?: {
+    type?: string
+    preset?: string
+  }
+  seed?: number
+}
+
+export type DimensionDefinition = {
+  id: string
+  name?: string
+  type?: DimensionTypeDefinition
+  generator?: DimensionGeneratorDefinition
+}
+
 export type AkivCraftApi = {
   hud: {
     addText(id: string, value: () => string, options: HudTextOptions): void
@@ -288,12 +326,16 @@ export type AkivCraftApi = {
     onUse(blockId: string, callback: BlockEventHandler): void
     onPlace(blockId: string, callback: BlockEventHandler): void
     onBreak(blockId: string, callback: BlockEventHandler): void
+    detectPattern(anchor: BlockPos, pattern: Record<string, string>): Promise<boolean>
   }
   creative: {
     registerTab(tab: CreativeTabDefinition): void
   }
   biomes: {
     register(biome: BiomeDefinition): void
+  }
+  dimensions: {
+    register(dimension: DimensionDefinition): void
   }
   chat: {
     send(message: string): void
@@ -334,6 +376,8 @@ export type AkivCraftApi = {
     entities(): EntityState[]
     setBlock(x: number, y: number, z: number, blockId: string): void
     removeBlock(x: number, y: number, z: number): void
+    getBlock(x: number, y: number, z: number): Promise<string>
+    getBlocks(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Promise<Array<{ x: number, y: number, z: number, id: string }>>
   }
   server: {
     state(): ServerState

@@ -41,6 +41,39 @@ export class PlayerActionClient {
     this.send(`removeBlock\t${x}\t${y}\t${z}`)
   }
 
+  private query(request: string): Promise<string> {
+    if (this.stdio) {
+      return Promise.reject(new Error("getBlock/getBlocks not supported in stdio mode"))
+    }
+    return new Promise((resolve, reject) => {
+      const socket = new net.Socket()
+      let raw = ""
+      socket.setEncoding("utf8")
+      socket.setTimeout(1000)
+      socket.connect(this.statePort, "127.0.0.1", () => {
+        socket.write(`${request}\n`)
+      })
+      socket.on("data", (chunk: string) => { raw += chunk })
+      socket.on("end", () => { resolve(raw.trim()) })
+      socket.on("timeout", () => { socket.destroy(new Error("block query timeout")) })
+      socket.on("error", reject)
+    })
+  }
+
+  async getBlock(x: number, y: number, z: number): Promise<string> {
+    const response = await this.query(`getBlock ${x} ${y} ${z}`)
+    const parsed = JSON.parse(response) as { error?: string, blockId?: string }
+    if (parsed.error) throw new Error(parsed.error)
+    return parsed.blockId ?? "minecraft:air"
+  }
+
+  async getBlocks(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Promise<Array<{ x: number, y: number, z: number, id: string }>> {
+    const response = await this.query(`getBlocks ${x1} ${y1} ${z1} ${x2} ${y2} ${z2}`)
+    const parsed = JSON.parse(response) as { error?: string, blocks?: Array<{ x: number, y: number, z: number, id: string }> }
+    if (parsed.error) throw new Error(parsed.error)
+    return parsed.blocks ?? []
+  }
+
   private send(tsv: string): void {
     if (this.stdio) {
       process.stdout.write(`${JSON.stringify({ type: "playerAction", data: encode(tsv) })}\n`)

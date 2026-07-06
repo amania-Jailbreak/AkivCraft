@@ -23,6 +23,8 @@ AkivCraft Node mods receive one `api` object in `onEnable(api)`.
 - Surface blocks include `y`, so map mods can render height shading, contour lines, and altitude ranges without extra API calls.
 - `api.world.setBlock(x, y, z, blockId)` places a block at the given coordinates. In singleplayer this edits the server level directly; in multiplayer it sends a vanilla `/setblock` command. `blockId` is a full id like `minecraft:stone` or `akivcraft.mymod:custom_block`.
 - `api.world.removeBlock(x, y, z)` removes the block at the given coordinates (sets it to air). Same singleplayer/multiplayer behavior as `setBlock`.
+- `api.world.getBlock(x, y, z)` returns a Promise resolving to the block id at the given coordinates (e.g. `"minecraft:stone"`). Requires TCP IPC mode (not stdio).
+- `api.world.getBlocks(x1, y1, z1, x2, y2, z2)` returns a Promise resolving to an array of `{ x, y, z, id }` objects for all blocks in the bounding box. Max 4096 blocks per query. Requires TCP IPC mode.
 
 Block edits run on the game thread and are asynchronous from the mod's perspective. Mods should not assume a block is present immediately after calling `setBlock`. Use block events (`api.events.on("place_block", ...)`) to confirm placement when needed.
 
@@ -196,6 +198,102 @@ export default {
 ```
 
 The first implementation is notification-only. It does not cancel vanilla placement/use. Use it for triggers, logging, portal detection, and multiblock rescans around the changed position.
+
+## Multiblock Detection
+
+- `api.blocks.detectPattern(anchor, pattern)` returns a Promise resolving to `true` if all blocks in the pattern match at the given anchor position. `pattern` is a map of `"dx,dy,dz"` offset strings to expected block ids.
+
+Example — detect a 2x2 nether portal frame:
+
+```js
+const PORTAL_PATTERN = {
+  "0,0,0": "minecraft:obsidian",
+  "1,0,0": "minecraft:obsidian",
+  "0,1,0": "minecraft:obsidian",
+  "1,1,0": "minecraft:obsidian",
+  "0,2,0": "minecraft:obsidian",
+  "1,2,0": "minecraft:obsidian",
+}
+
+api.blocks.onUse("minecraft:obsidian", async (ctx) => {
+  const match = await api.blocks.detectPattern(ctx.targetPos, PORTAL_PATTERN)
+  if (match) {
+    api.chat.send("Nether portal frame detected!")
+    api.world.setBlock(ctx.targetPos.x, ctx.targetPos.y + 1, ctx.targetPos.z, "minecraft:fire")
+  }
+})
+```
+
+`detectPattern` uses `api.world.getBlocks` internally and requires TCP IPC mode (not stdio).
+
+## Custom Dimensions
+
+- `api.dimensions.register(dimension)` registers a custom dimension. The Node runtime generates dimension and dimension_type data pack JSON files in `generated-resourcepacks/akivcraft.dimensions/`, which Minecraft loads automatically.
+
+Supported fields: `id` (required, e.g. `"akivcraft.mymod:void_world"`), `name`, `type` (dimension type properties), and `generator` (noise/biome source settings).
+
+Example:
+
+```js
+api.dimensions.register({
+  id: "akivcraft.mymod:void_world",
+  name: "Void World",
+  type: {
+    height: 256,
+    minY: 0,
+    hasSkylight: false,
+    hasCeiling: false,
+    ultrawarm: false,
+    natural: false,
+    bedWorks: false,
+    respawnAnchorWorks: false,
+    effects: "minecraft:the_end",
+  },
+  generator: {
+    type: "minecraft:flat",
+    settings: "minecraft:the_void",
+  },
+})
+```
+
+Dimensions are registered at mod startup. The data pack is generated before Minecraft loads world data, so custom dimensions are available for new worlds. Existing worlds need the data pack added manually.
+
+## Biomes
+
+- `api.biomes.register(biome)` registers a custom biome with noise placement, spawn settings, and visual properties. Biomes are injected into Minecraft's biome registry and noise parameter lists at startup.
+
+Supported fields include `id`, `temperature`, `downfall`, `hasPrecipitation`, `noise` (temperature/humidity/continentalness/erosion/depth/weirdness ranges and offset), `source` (`"overworld"`, `"nether"`, or `"all"`), `skyColor`, `fogColor`, `waterColor`, `grassColor`, `foliageColor`, `spawners`, `spawnCosts`, `backgroundMusic`, `ambientSound`, and various boolean attributes.
+
+`features` and `carvers` fields are accepted in the definition but are not yet applied in MC 26.1.2 — `BiomeGenerationSettings` has no public builder in this version. Custom biomes use empty generation settings (no trees, ores, or caves) until a future MC version exposes the builder API.
+
+Example:
+
+```js
+api.biomes.register({
+  id: "akivcraft.mymod:crystal_plains",
+  temperature: 0.5,
+  downfall: 0.3,
+  hasPrecipitation: true,
+  source: "overworld",
+  noise: {
+    temperature: [0.3, 0.7],
+    humidity: [0.2, 0.6],
+    continentalness: [-0.3, 0.3],
+    erosion: [-0.5, 0.5],
+    depth: [-1, 1],
+    weirdness: [-0.5, 0.5],
+    offset: 0,
+  },
+  skyColor: "#78a7ff",
+  fogColor: "#c0d8ff",
+  waterColor: "#3f76e4",
+  grassColor: "#7ec850",
+  foliageColor: "#5da83a",
+  spawners: {
+    creature: [{ type: "minecraft:sheep", weight: 12, minCount: 4, maxCount: 4 }],
+  },
+})
+```
 
 ## Metadata
 

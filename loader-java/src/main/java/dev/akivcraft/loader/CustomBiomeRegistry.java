@@ -303,6 +303,9 @@ public final class CustomBiomeRegistry {
                 }
             }
 
+            var featuresJson = json.getAsJsonArray("features");
+            var carversJson = json.getAsJsonArray("carvers");
+
             var builder = new Biome.BiomeBuilder()
                 .hasPrecipitation(booleanValue(json, "hasPrecipitation", true))
                 .temperature(floatValue(json, "temperature", 0.8f))
@@ -310,7 +313,7 @@ public final class CustomBiomeRegistry {
                 .temperatureAdjustment(temperatureModifier(stringValue(json, "temperatureModifier", "none")))
                 .specialEffects(effects.build())
                 .mobSpawnSettings(spawns.build())
-                .generationSettings(BiomeGenerationSettings.EMPTY);
+                .generationSettings(buildGenerationSettings(featuresJson, carversJson));
 
             if (json.has("skyColor")) builder.setAttribute(EnvironmentAttributes.SKY_COLOR, colorValue(json, "skyColor", 0x78a7ff));
             if (json.has("fogColor")) builder.setAttribute(EnvironmentAttributes.FOG_COLOR, colorValue(json, "fogColor", 0xc0d8ff));
@@ -327,6 +330,15 @@ public final class CustomBiomeRegistry {
             if (json.has("monstersBurn")) builder.setAttribute(EnvironmentAttributes.MONSTERS_BURN, booleanValue(json, "monstersBurn", false));
 
             return builder.build();
+        }
+
+        private static BiomeGenerationSettings buildGenerationSettings(JsonArray featuresJson, JsonArray carversJson) {
+            if ((featuresJson == null || featuresJson.isEmpty()) && (carversJson == null || carversJson.isEmpty())) {
+                return BiomeGenerationSettings.EMPTY;
+            }
+
+            System.out.println("AkivCraft custom biome features/carvers requested but BiomeGenerationSettings has no public builder in MC 26.1.2; falling back to EMPTY");
+            return BiomeGenerationSettings.EMPTY;
         }
     }
 

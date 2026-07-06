@@ -1,8 +1,17 @@
+const PORTAL_PATTERN = {
+  "0,0,0": "minecraft:obsidian",
+  "1,0,0": "minecraft:obsidian",
+  "0,1,0": "minecraft:obsidian",
+  "1,1,0": "minecraft:obsidian",
+  "0,2,0": "minecraft:obsidian",
+  "1,2,0": "minecraft:obsidian",
+}
+
 export default {
   id: "block-events",
   name: "Block Events Sample",
   version: "0.1.0",
-  description: "Logs block use/place/break events and demonstrates world edit via setBlock.",
+  description: "Logs block use/place/break events, demonstrates world edit, and portal detection.",
 
   onEnable(api) {
     api.events.on("use_block", (ctx) => {
@@ -23,6 +32,13 @@ export default {
       const { x, y, z } = ctx.targetPos
       api.world.setBlock(x, y + 1, z, "minecraft:beacon")
       api.chat.send(`AkivCraft: placed beacon above gold block at ${x}, ${y + 1}, ${z}`)
+    })
+
+    api.blocks.onUse("minecraft:obsidian", async (ctx) => {
+      const match = await api.blocks.detectPattern(ctx.targetPos, PORTAL_PATTERN)
+      if (match) {
+        api.chat.send("AkivCraft: 2x2 nether portal frame detected!")
+      }
     })
   }
 }
