@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "GGG",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "G": "akivcraft.item_sample:akiv_gem",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "id": "akivcraft.item_sample:akiv_pickaxe",
+    "count": 1
+  }
+}

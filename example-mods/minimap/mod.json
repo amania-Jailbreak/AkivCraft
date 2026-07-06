@@ -1,0 +1,6 @@
+{
+  "id": "minimap",
+  "name": "AkivMap",
+  "version": "0.6.0",
+  "description": "256x256 palette8 binary minimap with resource pack sprites."
+}

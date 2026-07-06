@@ -1,0 +1,6 @@
+{
+  "id": "biome-sample",
+  "name": "Biome Sample",
+  "version": "0.1.0",
+  "description": "Adds a custom crystal valley biome through the AkivCraft biome API."
+}

@@ -1,0 +1,13 @@
+{
+  "name": "akivcraft",
+  "private": true,
+  "workspaces": [
+    "node-runtime",
+    "example-mods/*"
+  ],
+  "scripts": {
+    "typecheck": "npm --workspace node-runtime run typecheck",
+    "build:node-runtime": "npm --workspace node-runtime run build",
+    "package:external": "npm run build:node-runtime && ./gradlew :loader-java:build && node scripts/package-external.mjs"
+  }
+}

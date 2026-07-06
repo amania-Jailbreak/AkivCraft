@@ -1,0 +1,6 @@
+{
+  "id": "debug-chat",
+  "name": "Debug Chat",
+  "version": "0.1.0",
+  "description": "External chat window for debugging. Open http://localhost:28520 in a browser."
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+target/
+build/
+.gradle/
+.akivcraft/
+*.class
+loaded-mods.json
+.DS_Store
+._*
+core.*
+generated-resourcepacks/
+vanila/*.jar

@@ -1,0 +1,6 @@
+{
+  "id": "fps-hud",
+  "name": "FPS HUD",
+  "version": "0.1.0",
+  "description": "Shows the current client FPS on the HUD."
+}

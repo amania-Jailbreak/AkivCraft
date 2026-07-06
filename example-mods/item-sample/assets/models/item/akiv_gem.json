@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "akivcraft.item_sample:item/akiv_gem"
+  }
+}

@@ -1,0 +1,10 @@
+[package]
+name = "akivcraft-launcher-gpui"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+akivcraft-launcher-core = { path = "../launcher-core" }
+gpui = { git = "https://github.com/zed-industries/zed", package = "gpui" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", package = "gpui_platform", features = ["font-kit", "wayland", "x11"] }
