@@ -24,6 +24,7 @@ public final class AkivCraftTransformerSet {
             new KeyInputTransformer(),
             new BlockEventTransformer(),
             new FreezeTransformer(),
+            new WorldDimensionsTransformer(),
             new CreativeScreenTransformer(),
             new ChatTransformer(),
             new dev.akivcraft.loader.via.ViaNetworkTransformer()
@@ -57,6 +58,7 @@ public final class AkivCraftTransformerSet {
             "net.minecraft.client.KeyboardHandler",
             "net.minecraft.server.level.ServerPlayerGameMode",
             "net.minecraft.core.MappedRegistry",
+            "net.minecraft.world.level.levelgen.WorldDimensions",
             "net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen",
             "net.minecraft.client.gui.components.ChatComponent",
             "net.minecraft.network.Connection",

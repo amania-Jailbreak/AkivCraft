@@ -9,12 +9,17 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
+import sun.misc.Unsafe;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public final class CustomDimensionRegistry {
     private static volatile Registry<DimensionType> dimensionTypeRegistry;
+    private static final Unsafe UNSAFE = unsafe();
 
     private CustomDimensionRegistry() {
     }
@@ -139,6 +144,55 @@ public final class CustomDimensionRegistry {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static void beforeBake(Object worldDimensionsObject, Object baseRegistryObject) {
+        if (!(baseRegistryObject instanceof Registry<?> rawRegistry)) return;
+        if (!Files.isRegularFile(LoaderConfig.fromSystemProperties().modsDirectory().resolve("loaded-dimensions.json"))) return;
+
+        try {
+            var dimensionsField = worldDimensionsObject.getClass().getDeclaredField("dimensions");
+            dimensionsField.setAccessible(true);
+            var current = (Map<ResourceKey<LevelStem>, LevelStem>) dimensionsField.get(worldDimensionsObject);
+            var next = new LinkedHashMap<ResourceKey<LevelStem>, LevelStem>(current);
+
+            var baseRegistry = (Registry<LevelStem>) rawRegistry;
+            var overworldStem = baseRegistry.get(LevelStem.OVERWORLD).map(Holder.Reference::value).orElse(null);
+            var netherStem = baseRegistry.get(LevelStem.NETHER).map(Holder.Reference::value).orElse(null);
+            var endStem = baseRegistry.get(LevelStem.END).map(Holder.Reference::value).orElse(null);
+
+            var file = LoaderConfig.fromSystemProperties().modsDirectory().resolve("loaded-dimensions.json");
+            var root = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+            var dimensions = root.getAsJsonArray("dimensions");
+            if (dimensions == null) return;
+
+            var added = 0;
+            for (var element : dimensions) {
+                if (!element.isJsonObject()) continue;
+                var obj = element.getAsJsonObject();
+                var id = stringValue(obj, "id", null);
+                if (id == null || id.isBlank()) continue;
+
+                var identifier = Identifier.parse(id);
+                var stemKey = ResourceKey.create(Registries.LEVEL_STEM, identifier);
+                if (next.containsKey(stemKey)) continue;
+
+                var templateStem = selectTemplateStem(obj, overworldStem, netherStem, endStem);
+                if (templateStem == null) continue;
+
+                next.put(stemKey, new LevelStem(templateStem.type(), templateStem.generator()));
+                added++;
+                System.out.printf("AkivCraft baked custom level stem %s from template%n", id);
+            }
+
+            if (added > 0) {
+                UNSAFE.putObject(worldDimensionsObject, UNSAFE.objectFieldOffset(dimensionsField), Map.copyOf(next));
+                AkivCraftLoadingLog.info("Injected " + added + " custom dimensions into WorldDimensions.bake");
+            }
+        } catch (Throwable error) {
+            System.err.printf("AkivCraft failed before WorldDimensions.bake: %s%n", error.getMessage());
+        }
+    }
+
     private static net.minecraft.world.level.chunk.ChunkGenerator selectGenerator(
         JsonObject obj,
         LevelStem overworldStem,
@@ -151,6 +205,16 @@ public final class CustomDimensionRegistry {
             case "nether" -> netherStem != null ? netherStem.generator() : null;
             case "end" -> endStem != null ? endStem.generator() : null;
             default -> overworldStem != null ? overworldStem.generator() : null;
+        };
+    }
+
+    private static LevelStem selectTemplateStem(JsonObject obj, LevelStem overworldStem, LevelStem netherStem, LevelStem endStem) {
+        var generator = obj.getAsJsonObject("generator");
+        var template = generator != null ? stringValue(generator, "template", "overworld") : "overworld";
+        return switch (template.toLowerCase(java.util.Locale.ROOT)) {
+            case "nether" -> netherStem;
+            case "end" -> endStem;
+            default -> overworldStem;
         };
     }
 
@@ -187,5 +251,15 @@ public final class CustomDimensionRegistry {
         var element = obj.get(name);
         if (element == null || !element.isJsonPrimitive()) return fallback;
         return element.getAsNumber();
+    }
+
+    private static Unsafe unsafe() {
+        try {
+            var field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (Unsafe) field.get(null);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("AkivCraft failed to access Unsafe", error);
+        }
     }
 }
