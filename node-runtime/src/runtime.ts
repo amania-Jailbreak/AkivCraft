@@ -94,7 +94,11 @@ export class AkivCraftRuntime {
     await this.loadMods()
     await this.writeLoadedModsManifest()
     for (const mod of this.mods.values()) {
-      await mod.onEnable?.(this.createApi(mod))
+      try {
+        await mod.onEnable?.(this.createApi(mod))
+      } catch (error) {
+        console.error(`AkivCraft mod '${mod.id}' failed during onEnable`, error)
+      }
     }
     await this.writeLoadedItemsManifest()
     await this.writeLoadedRecipesManifest()
