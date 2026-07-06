@@ -54,7 +54,7 @@ public final class StateIpcServer {
                 var x = Integer.parseInt(parts[1]);
                 var y = Integer.parseInt(parts[2]);
                 var z = Integer.parseInt(parts[3]);
-                writer.println(queryBlock(x, y, z));
+                writer.println(queryBlockJson(x, y, z));
             } else if (line != null && line.startsWith("getBlocks ")) {
                 var parts = line.split(" ");
                 if (parts.length < 7) { writer.println("{\"error\":\"invalid request\"}"); return; }
@@ -64,7 +64,7 @@ public final class StateIpcServer {
                 var x2 = Integer.parseInt(parts[4]);
                 var y2 = Integer.parseInt(parts[5]);
                 var z2 = Integer.parseInt(parts[6]);
-                writer.println(queryBlocks(x1, y1, z1, x2, y2, z2));
+                writer.println(queryBlocksJson(x1, y1, z1, x2, y2, z2));
             } else {
                 writer.println("{\"error\":\"unknown request\"}");
             }
@@ -72,7 +72,7 @@ public final class StateIpcServer {
         }
     }
 
-    private static String queryBlock(int x, int y, int z) {
+    public static String queryBlockJson(int x, int y, int z) {
         var mc = Minecraft.getInstance();
         var level = mc.level;
         if (level == null) return "{\"error\":\"no level\"}";
@@ -81,7 +81,7 @@ public final class StateIpcServer {
         return "{\"blockId\":\"" + escape(id) + "\"}";
     }
 
-    private static String queryBlocks(int x1, int y1, int z1, int x2, int y2, int z2) {
+    public static String queryBlocksJson(int x1, int y1, int z1, int x2, int y2, int z2) {
         var mc = Minecraft.getInstance();
         var level = mc.level;
         if (level == null) return "{\"error\":\"no level\"}";

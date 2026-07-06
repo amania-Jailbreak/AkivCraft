@@ -20,6 +20,9 @@ public final class AkivCraftRuntimeServices {
             NodeHudClient.start(config.ipcPort());
             BinaryHudClient.start(config.binaryPort());
             UdpHudClient.start(config.udpPort());
+        } else {
+            var unixSocket = new UnixSocketIpc(config.unixSocketPath());
+            unixSocket.start();
         }
 
         KeyEventBridge.start(config.ipcPort());
@@ -29,10 +32,11 @@ public final class AkivCraftRuntimeServices {
         AkivCraftKeyMappings.start(config.ipcPort());
 
         System.out.printf(
-            "AkivCraft runtime services started: ipc=%d, state=%s, stdio=%s%n",
+            "AkivCraft runtime services started: ipc=%d, state=%s, stdio=%s, unixSocket=%s%n",
             config.ipcPort(),
             stateServerStarted ? "enabled" : "disabled",
-            config.useStdioIpc() ? "enabled" : "disabled"
+            config.useStdioIpc() ? "enabled" : "disabled",
+            config.useStdioIpc() ? config.unixSocketPath() : "n/a"
         );
     }
 }

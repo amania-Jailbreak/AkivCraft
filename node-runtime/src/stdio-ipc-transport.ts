@@ -12,6 +12,9 @@ export class StdioIpcTransport {
   private timer: NodeJS.Timeout | undefined
   private keybindingTimer: NodeJS.Timeout | undefined
   private itemTimer: NodeJS.Timeout | undefined
+  private nextQueryId = 1
+  private pendingQueries = new Map<number, { resolve: (value: string) => void, reject: (error: Error) => void }>()
+  private hudEnabled = true
 
   constructor(
     private readonly stateClient: StateClient,
@@ -20,6 +23,14 @@ export class StdioIpcTransport {
     private readonly keybindings: Map<string, KeyBinding>,
     private readonly items: Map<string, ItemDefinition>,
   ) {
+  }
+
+  disableHud(): void {
+    this.hudEnabled = false
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = undefined
+    }
   }
 
   start(): void {
@@ -78,6 +89,13 @@ export class StdioIpcTransport {
       } else if (message.type === "blockEvent" && message.data) {
         const json = Buffer.from(message.data, "base64").toString("utf8")
         this.ipcServer.handleBlockEvent(`blockEvent\t${json}`)
+      } else if (message.type === "queryResult" && message.id !== undefined && message.data) {
+        const pending = this.pendingQueries.get(Number(message.id))
+        if (pending) {
+          this.pendingQueries.delete(Number(message.id))
+          const json = Buffer.from(message.data, "base64").toString("utf8")
+          pending.resolve(json)
+        }
       }
     } catch (error) {
       console.error("AkivCraft stdio IPC parse failed", error)
@@ -85,6 +103,7 @@ export class StdioIpcTransport {
   }
 
   private sendHudFrame(): void {
+    if (!this.hudEnabled) return
     this.send("hud", Buffer.from(this.ipcServer.hudLines().join("\n"), "utf8"))
     this.send("bitmap", buildBitmapFrame(this.bitmaps))
   }
@@ -104,7 +123,28 @@ export class StdioIpcTransport {
     this.send("items", JSON.stringify({ items: [...this.items.values()] }))
   }
 
+  async query(tsv: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const id = this.nextQueryId++
+      this.pendingQueries.set(id, { resolve, reject })
+      const data = Buffer.from(tsv, "utf8").toString("base64")
+      this.sendRaw(JSON.stringify({ type: "query", id, data }))
+
+      // Timeout after 2 seconds
+      setTimeout(() => {
+        if (this.pendingQueries.has(id)) {
+          this.pendingQueries.delete(id)
+          reject(new Error("stdio query timeout"))
+        }
+      }, 2000)
+    })
+  }
+
+  private sendRaw(line: string): void {
+    process.stdout.write(`${line}\n`)
+  }
+
   private send(type: string, payload: string | Buffer): void {
-    process.stdout.write(`${JSON.stringify({ type, data: encode(payload) })}\n`)
+    this.sendRaw(JSON.stringify({ type, data: encode(payload) }))
   }
 }

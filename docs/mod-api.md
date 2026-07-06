@@ -23,8 +23,8 @@ AkivCraft Node mods receive one `api` object in `onEnable(api)`.
 - Surface blocks include `y`, so map mods can render height shading, contour lines, and altitude ranges without extra API calls.
 - `api.world.setBlock(x, y, z, blockId)` places a block at the given coordinates. In singleplayer this edits the server level directly; in multiplayer it sends a vanilla `/setblock` command. `blockId` is a full id like `minecraft:stone` or `akivcraft.mymod:custom_block`.
 - `api.world.removeBlock(x, y, z)` removes the block at the given coordinates (sets it to air). Same singleplayer/multiplayer behavior as `setBlock`.
-- `api.world.getBlock(x, y, z)` returns a Promise resolving to the block id at the given coordinates (e.g. `"minecraft:stone"`). Requires TCP IPC mode (not stdio).
-- `api.world.getBlocks(x1, y1, z1, x2, y2, z2)` returns a Promise resolving to an array of `{ x, y, z, id }` objects for all blocks in the bounding box. Max 4096 blocks per query. Requires TCP IPC mode.
+- `api.world.getBlock(x, y, z)` returns a Promise resolving to the block id at the given coordinates (e.g. `"minecraft:stone"`). Works in both stdio IPC mode and TCP IPC mode.
+- `api.world.getBlocks(x1, y1, z1, x2, y2, z2)` returns a Promise resolving to an array of `{ x, y, z, id }` objects for all blocks in the bounding box. Max 4096 blocks per query. Works in both stdio IPC mode and TCP IPC mode.
 
 Block edits run on the game thread and are asynchronous from the mod's perspective. Mods should not assume a block is present immediately after calling `setBlock`. Use block events (`api.events.on("place_block", ...)`) to confirm placement when needed.
 
@@ -224,7 +224,7 @@ api.blocks.onUse("minecraft:obsidian", async (ctx) => {
 })
 ```
 
-`detectPattern` uses `api.world.getBlocks` internally and requires TCP IPC mode (not stdio).
+`detectPattern` uses `api.world.getBlocks` internally and works in both stdio IPC mode and TCP IPC mode.
 
 ## Custom Dimensions
 

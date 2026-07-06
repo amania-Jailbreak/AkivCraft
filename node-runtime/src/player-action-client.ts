@@ -2,10 +2,16 @@ import net from "node:net"
 
 const encode = (value: string): string => Buffer.from(value, "utf8").toString("base64")
 
+type QueryHandler = (tsv: string) => Promise<string>
+
 export class PlayerActionClient {
+  private nextQueryId = 1
+  private pendingQueries = new Map<number, { resolve: (value: string) => void, reject: (error: Error) => void }>()
+
   constructor(
     private readonly statePort: number,
     private readonly stdio: boolean,
+    private readonly queryHandler?: QueryHandler,
   ) {
   }
 
@@ -41,6 +47,14 @@ export class PlayerActionClient {
     this.send(`removeBlock\t${x}\t${y}\t${z}`)
   }
 
+  private queryStdio(tsv: string): Promise<string> {
+    if (!this.stdio) throw new Error("queryStdio called without stdio IPC")
+    if (this.queryHandler) {
+      return this.queryHandler(tsv)
+    }
+    throw new Error("stdio query handler not registered")
+  }
+
   private query(request: string): Promise<string> {
     if (this.stdio) {
       return Promise.reject(new Error("getBlock/getBlocks not supported in stdio mode"))
@@ -61,6 +75,12 @@ export class PlayerActionClient {
   }
 
   async getBlock(x: number, y: number, z: number): Promise<string> {
+    if (this.stdio) {
+      const response = await this.queryStdio(`getBlock\t${x}\t${y}\t${z}`)
+      const parsed = JSON.parse(response) as { error?: string, blockId?: string }
+      if (parsed.error) throw new Error(parsed.error)
+      return parsed.blockId ?? "minecraft:air"
+    }
     const response = await this.query(`getBlock ${x} ${y} ${z}`)
     const parsed = JSON.parse(response) as { error?: string, blockId?: string }
     if (parsed.error) throw new Error(parsed.error)
@@ -68,6 +88,12 @@ export class PlayerActionClient {
   }
 
   async getBlocks(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Promise<Array<{ x: number, y: number, z: number, id: string }>> {
+    if (this.stdio) {
+      const response = await this.queryStdio(`getBlocks\t${x1}\t${y1}\t${z1}\t${x2}\t${y2}\t${z2}`)
+      const parsed = JSON.parse(response) as { error?: string, blocks?: Array<{ x: number, y: number, z: number, id: string }> }
+      if (parsed.error) throw new Error(parsed.error)
+      return parsed.blocks ?? []
+    }
     const response = await this.query(`getBlocks ${x1} ${y1} ${z1} ${x2} ${y2} ${z2}`)
     const parsed = JSON.parse(response) as { error?: string, blocks?: Array<{ x: number, y: number, z: number, id: string }> }
     if (parsed.error) throw new Error(parsed.error)

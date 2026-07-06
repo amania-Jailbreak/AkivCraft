@@ -16,7 +16,8 @@ public record LoaderConfig(
     int ipcPort,
     int statePort,
     int binaryPort,
-    int udpPort
+    int udpPort,
+    Path unixSocketPath
 ) {
     public static LoaderConfig fromSystemProperties() {
         var version = System.getProperty("akivcraft.minecraftVersion", "26.1.2");
@@ -30,8 +31,9 @@ public record LoaderConfig(
         var statePort = useStdio ? Integer.getInteger("akivcraft.statePort", 28513) : portProperty("akivcraft.statePort", 28513);
         var binaryPort = useStdio ? Integer.getInteger("akivcraft.binaryPort", 28514) : portProperty("akivcraft.binaryPort", 28514);
         var udpPort = useStdio ? Integer.getInteger("akivcraft.udpPort", 28515) : portProperty("akivcraft.udpPort", 28515);
+        var unixSocketPath = pathProperty("akivcraft.unixSocket", home.resolve("ipc.sock"));
 
-        return new LoaderConfig(version, home, nodeExecutable, nodeRuntime, modsDirectory, ipcTransport, ipcPort, statePort, binaryPort, udpPort);
+        return new LoaderConfig(version, home, nodeExecutable, nodeRuntime, modsDirectory, ipcTransport, ipcPort, statePort, binaryPort, udpPort, unixSocketPath);
     }
 
     public boolean useStdioIpc() {
@@ -80,9 +82,8 @@ public record LoaderConfig(
 
         for (var candidate : candidates) {
             if (candidate == null || candidate.isBlank()) continue;
-            if ("node".equals(candidate)) continue;
             try {
-                if (java.nio.file.Files.isExecutable(Path.of(candidate))) return candidate;
+                if (!"node".equals(candidate) && java.nio.file.Files.isExecutable(Path.of(candidate))) return candidate;
             } catch (RuntimeException ignored) {
             }
         }

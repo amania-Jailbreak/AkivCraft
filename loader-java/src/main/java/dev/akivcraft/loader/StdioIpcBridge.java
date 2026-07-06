@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 public final class StdioIpcBridge {
     private static final Pattern TYPE_PATTERN = Pattern.compile("\"type\":\"([^\"]+)\"");
     private static final Pattern DATA_PATTERN = Pattern.compile("\"data\":\"([^\"]*)\"");
+    private static final Pattern QUERY_ID_PATTERN = Pattern.compile("\"id\":\"([^\"]+)\"");
     private static volatile PrintWriter writer;
     private static volatile String keybindingsJson = "{\"bindings\":[]}";
     private static volatile boolean loggedHud;
@@ -112,6 +113,10 @@ public final class StdioIpcBridge {
             } else if ("playerAction".equals(type)) {
                 var tsv = new String(decoded, StandardCharsets.UTF_8);
                 PlayerActionHandler.handle("playerAction\t" + tsv);
+            } else if ("query".equals(type)) {
+                var tsv = new String(decoded, StandardCharsets.UTF_8);
+                var response = handleQuery(tsv);
+                send("{\"type\":\"queryResult\",\"id\":\"" + escape(extractQueryId(line)) + "\",\"data\":\"" + encode(response) + "\"}");
             }
         } catch (Throwable error) {
             System.err.printf("AkivCraft failed to parse stdio IPC frame: %s%n", error.getMessage());
@@ -122,6 +127,41 @@ public final class StdioIpcBridge {
         var out = writer;
         if (out == null) return;
         out.println(line);
+    }
+
+    private static String extractQueryId(String json) {
+        var matcher = QUERY_ID_PATTERN.matcher(json);
+        return matcher.find() ? matcher.group(1) : "";
+    }
+
+    private static String handleQuery(String tsv) {
+        var parts = tsv.split("\t");
+        if (parts.length < 1) return "{\"error\":\"empty query\"}";
+        var action = parts[0];
+        if ("getBlock".equals(action) && parts.length >= 4) {
+            try {
+                var x = Integer.parseInt(parts[1]);
+                var y = Integer.parseInt(parts[2]);
+                var z = Integer.parseInt(parts[3]);
+                return StateIpcServer.queryBlockJson(x, y, z);
+            } catch (NumberFormatException e) {
+                return "{\"error\":\"invalid coordinates\"}";
+            }
+        }
+        if ("getBlocks".equals(action) && parts.length >= 7) {
+            try {
+                var x1 = Integer.parseInt(parts[1]);
+                var y1 = Integer.parseInt(parts[2]);
+                var z1 = Integer.parseInt(parts[3]);
+                var x2 = Integer.parseInt(parts[4]);
+                var y2 = Integer.parseInt(parts[5]);
+                var z2 = Integer.parseInt(parts[6]);
+                return StateIpcServer.queryBlocksJson(x1, y1, z1, x2, y2, z2);
+            } catch (NumberFormatException e) {
+                return "{\"error\":\"invalid coordinates\"}";
+            }
+        }
+        return "{\"error\":\"unknown query\"}";
     }
 
     private static String match(Pattern pattern, String value) {

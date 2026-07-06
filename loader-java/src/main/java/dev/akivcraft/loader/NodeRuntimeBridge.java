@@ -6,13 +6,17 @@ import java.util.ArrayList;
 
 public final class NodeRuntimeBridge {
     private final LoaderConfig config;
+    private final NodePidLock pidLock;
     private Process process;
 
     public NodeRuntimeBridge(LoaderConfig config) {
         this.config = config;
+        this.pidLock = new NodePidLock(config.akivcraftHome().resolve("node.pid"));
     }
 
     public boolean start() {
+        if (!pidLock.tryLock()) return false;
+
         if (!Files.isRegularFile(config.nodeRuntimeEntry())) {
             System.err.printf(
                 "AkivCraft Node runtime not found: %s%nCopy the full .akivcraft folder into the instance directory, or set -Dakivcraft.nodeRuntime=<path>.%n",
@@ -30,6 +34,8 @@ public final class NodeRuntimeBridge {
         command.add(config.modsDirectory().toString());
         if (config.useStdioIpc()) {
             command.add("--stdio-ipc");
+            command.add("--unix-socket");
+            command.add(config.unixSocketPath().toString());
         } else {
             command.add("--port");
             command.add(Integer.toString(config.ipcPort()));
@@ -66,6 +72,7 @@ public final class NodeRuntimeBridge {
     }
 
     public void stop() {
+        pidLock.release();
         if (process == null || !process.isAlive()) return;
         process.destroy();
         try {

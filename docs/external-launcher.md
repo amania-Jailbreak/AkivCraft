@@ -109,19 +109,30 @@ If your launcher resolves relative paths from a different directory, use absolut
 NodeJS 20 or newer must be available as `node` on PATH.
 Java 25 or newer is required for Minecraft `26.1.2`.
 
-AkivCraft uses stdio IPC by default, so it does not need localhost TCP or UDP ports. To force the older port-based transport for debugging, add:
+AkivCraft uses stdio IPC by default, so it does not need localhost TCP or UDP ports for control messages. Bitmap and HUD data is sent over a Unix domain socket (`.akivcraft/ipc.sock`) when stdio mode is active, which avoids head-of-line blocking on the main stdio pipe and keeps latency low for state updates and events. To force the older port-based transport for debugging, add:
 
 ```text
 -Dakivcraft.ipcTransport=tcp
 ```
 
-If `node` is not on PATH, add this JVM argument with the full path:
+AkivCraft automatically looks for Node.js in common locations on macOS:
+
+```text
+/opt/homebrew/bin/node        # Apple Silicon Homebrew
+/usr/local/bin/node           # Intel Homebrew
+/usr/bin/node                 # system
+~/.nvm/current/bin/node       # nvm
+~/.volta/bin/node             # Volta
+~/.fnm/current/bin/node       # fnm
+```
+
+If none of these work and `node` is not on PATH, add this JVM argument with the full path:
 
 ```text
 -Dakivcraft.node=/path/to/node
 ```
 
-On macOS, GUI launchers often do not inherit your shell PATH. If Node was installed with Homebrew, this is commonly:
+On macOS, GUI launchers often do not inherit your shell PATH. If auto-detection fails and Node was installed with Homebrew, this is commonly:
 
 ```text
 -Dakivcraft.node=/opt/homebrew/bin/node
@@ -132,6 +143,8 @@ or on Intel Macs:
 ```text
 -Dakivcraft.node=/usr/local/bin/node
 ```
+
+AkivCraft writes a PID file to `.akivcraft/node.pid` to prevent multiple Node runtimes from running under the same `.akivcraft` home. If a stale PID file is found, it is replaced automatically.
 
 ## Current Limitations
 

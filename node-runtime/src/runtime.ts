@@ -2,13 +2,14 @@ import { readFile, readdir, writeFile, copyFile, mkdir, rm } from "node:fs/promi
 import { pathToFileURL } from "node:url"
 import path from "node:path"
 import type { AkivCraftApi, AkivCraftMod, BiomeDefinition, BlockEventHandler, BlockEventType, ChatMessage, GameState, ItemUseContext, PlayerState, ServerState, SettingsSchema, WorldState } from "./api.js"
-import type { HudBitmapEntry } from "./binary-ipc-server.js"
+import { buildBitmapFrame, type HudBitmapEntry } from "./binary-ipc-server.js"
 import { BinaryIpcServer } from "./binary-ipc-server.js"
 import type { HudEntry, ItemUseHandler } from "./ipc-server.js"
 import { IpcServer } from "./ipc-server.js"
 import { PlayerActionClient } from "./player-action-client.js"
 import { StateClient } from "./state-client.js"
 import { StdioIpcTransport } from "./stdio-ipc-transport.js"
+import { UnixSocketClient } from "./unix-socket-client.js"
 import { UdpBitmapSender } from "./udp-bitmap-sender.js"
 
 type RuntimeOptions = {
@@ -19,6 +20,7 @@ type RuntimeOptions = {
   binaryPort: number
   udpPort: number
   stdioIpc: boolean
+  unixSocket: string
 }
 
 export class AkivCraftRuntime {
@@ -42,6 +44,7 @@ export class AkivCraftRuntime {
   private readonly binaryIpcServer: BinaryIpcServer
   private readonly udpBitmapSender: UdpBitmapSender
   private readonly stdioIpcTransport: StdioIpcTransport
+  private readonly unixSocketClient: UnixSocketClient | null
   private readonly playerActionClient: PlayerActionClient
 
   constructor(private readonly options: RuntimeOptions) {
@@ -50,7 +53,13 @@ export class AkivCraftRuntime {
     this.binaryIpcServer = new BinaryIpcServer(options.binaryPort, this.bitmaps)
     this.udpBitmapSender = new UdpBitmapSender(options.udpPort, this.bitmaps)
     this.stdioIpcTransport = new StdioIpcTransport(this.stateClient, this.ipcServer, this.bitmaps, this.keybindings, this.items)
-    this.playerActionClient = new PlayerActionClient(options.statePort, options.stdioIpc)
+    this.unixSocketClient = options.unixSocket ? new UnixSocketClient(options.unixSocket) : null
+    this.playerActionClient = new PlayerActionClient(options.statePort, options.stdioIpc, (tsv) => {
+      if (!this.stdioIpcTransport) {
+        return Promise.reject(new Error("stdio IPC transport not available"))
+      }
+      return this.stdioIpcTransport.query(tsv)
+    })
   }
 
   async start(): Promise<void> {
@@ -61,6 +70,21 @@ export class AkivCraftRuntime {
       this.ipcServer.start()
       this.binaryIpcServer.start()
       this.udpBitmapSender.start()
+    }
+    if (this.unixSocketClient) {
+      this.stdioIpcTransport.disableHud()
+      this.unixSocketClient.connect().catch((error: unknown) => {
+        console.error("AkivCraft Unix socket client failed to connect", error)
+      })
+      setInterval(() => {
+        try {
+          const lines = this.ipcServer.hudLines()
+          const bitmaps = buildBitmapFrame(this.bitmaps)
+          this.unixSocketClient?.sendHud(lines.join("\n"), bitmaps)
+        } catch (error) {
+          console.error("AkivCraft UDS HUD send failed", error)
+        }
+      }, 100)
     }
     await this.loadMods()
     await this.writeLoadedModsManifest()
